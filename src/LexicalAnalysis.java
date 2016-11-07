@@ -27,10 +27,18 @@ public class LexicalAnalysis {
         int lineNumber = 1;
         int state = 0;
         String lexeme = "";
-        for(int i = 0; i<code.length(); i++){
-            char currentChar = code.charAt(i);
+        String key = "";
+        char currentChar = ' ';
+        for(int i = 0; i <= code.length(); i++){
+
+            if(i == code.length()){
+                key = "EOF";
+            }else {
+                 currentChar = code.charAt(i);
+                 key = getCharacterKey(currentChar);
+            }
+
             if (currentChar == '\n') lineNumber++;
-            String key = getCharacterKey(currentChar);
             int newState = lexicalStates.getNextState(state, key);
 
             if (newState == 0){

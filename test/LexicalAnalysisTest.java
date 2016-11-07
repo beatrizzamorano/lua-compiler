@@ -14,7 +14,7 @@ public class LexicalAnalysisTest {
                 "         local y = 0\n" +
                 "         a[i] = function () y=y+1; return x+y end\n" +
                 "   \"hola \"   " +
-                "       end;");
+                "       end");
         boolean programIsValid = lexicalAnalysis.generateTokens();
         Assert.assertEquals(true, programIsValid);
     }
