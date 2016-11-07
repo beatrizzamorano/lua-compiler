@@ -1,10 +1,11 @@
+import javax.swing.*;
 import java.util.HashMap;
 
 /**
  * Created by beatrizzamorano on 11/4/16.
  */
 public class LexicalStates {
-   public HashMap<Integer, HashMap<String, Integer>> matrix;
+   private HashMap<Integer, HashMap<String, Integer>> matrix;
 
    public LexicalStates() {
        initializeMatrix();
@@ -756,7 +757,11 @@ public class LexicalStates {
     }
 
     public int getNextState(int currentState, String key){
-        HashMap row = matrix.get(currentState);
-        return (int) row.get(key);
+        try {
+            HashMap row = matrix.get(currentState);
+            return (int) row.get(key);
+        } catch (NullPointerException npe) {
+            return 500;
+        }
     }
 }

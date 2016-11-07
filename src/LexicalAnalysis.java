@@ -5,9 +5,9 @@ import java.util.LinkedList;
  * Created by beatrizzamorano on 11/4/16.
  */
 public class LexicalAnalysis {
-    public static LinkedList<Token> tokens;
+    private static LinkedList<Token> tokens;
     private LexicalStates lexicalStates;
-    public String code;
+    private String code;
 
     public LexicalAnalysis(){
         lexicalStates = new LexicalStates();
@@ -20,6 +20,14 @@ public class LexicalAnalysis {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public String printTokens() {
+        String tokensString = "";
+        for (Token token : tokens) {
+            tokensString += token.toString() + "\n";
+        }
+        return tokensString;
     }
 
     public boolean generateTokens(){
@@ -71,19 +79,6 @@ public class LexicalAnalysis {
 
         return true;
     }
-
-    private int getPossibleEndOfFileError(int newState) {
-        switch (newState) {
-            case 3: return 501;
-            case 8: return 501;
-            case 16: return 501;
-            case 17: return 501;
-            case 18: return 501;
-            case 19: return 501;
-            default: return newState;
-        }
-    }
-
 
     private boolean isIndexDecrementRequired(int state){
         switch (state){

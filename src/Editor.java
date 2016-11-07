@@ -30,16 +30,23 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
     }
 
     public JEditorPane textPane;
+    public JEditorPane tokensTextPane;
     private JMenuBar menu;
     private JMenuItem copy, paste, cut;
     public boolean changed = false;
     private File file;
+    private LexicalAnalysis lexicalAnalysis;
 
     public Editor() {
         super("Editor");
         textPane = new JEditorPane();
         add(new JScrollPane(textPane), BorderLayout.CENTER);
         textPane.getDocument().addDocumentListener(this);
+        tokensTextPane = new JEditorPane();
+        tokensTextPane.setEnabled(false);
+        tokensTextPane.setSize(180, 500);
+        add(new JScrollPane(tokensTextPane), BorderLayout.EAST);
+        lexicalAnalysis = new LexicalAnalysis();
 
         menu = new JMenuBar();
         setJMenuBar(menu);
@@ -59,6 +66,11 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
         JMenu file = new JMenu("File");
         file.setMnemonic('F');
         menu.add(file);
+        JMenuItem run = new JMenuItem("Run");
+        run.setMnemonic('R');
+        run.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_R, InputEvent.CTRL_DOWN_MASK));
+        run.addActionListener(this);
+        file.add(run);
         JMenuItem n = new JMenuItem("New");
         n.setMnemonic('N');
         n.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_N, InputEvent.CTRL_DOWN_MASK));
@@ -145,6 +157,13 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
         } else if (action.equals("Find")) {
             FindDialog find = new FindDialog(this, true);
             find.showDialog();
+        } else if (action.equals("Run")){
+            lexicalAnalysis.setCode(textPane.getText());
+            boolean isLexicallyValid = lexicalAnalysis.generateTokens();
+            if (isLexicallyValid) {
+                tokensTextPane.setText(lexicalAnalysis.printTokens());
+            }
+
         }
     }
 
