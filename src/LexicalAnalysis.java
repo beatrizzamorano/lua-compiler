@@ -138,9 +138,9 @@ public class LexicalAnalysis {
 
     private String getError(int errorNumber){
         switch (errorNumber){
-            case 500: return "Error 500. Caracter no válido.";
-            case 501: return "Error 501. Fin de archivo inesperado.";
-            case 502: return "Error 502. Nueva linea inesperada.";
+            case 500: return "Error 500. Invalid character.";
+            case 501: return "Error 501. Unexpected end of file.";
+            case 502: return "Error 502. Unexpected new line.";
             default: return "Error " + errorNumber + ".";
         }
     }
