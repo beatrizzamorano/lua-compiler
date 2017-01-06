@@ -12,7 +12,7 @@ public class LexicalAnalysisTest {
                 "       local x = 20\n" +
                 "       for i=1,10 do\n" +
                 "         local y = 0\n" +
-                "         a[i] = function () y=y+1; return x+y end\n" +
+                "         a = function () y=y+1; return x+y end\n" +
                 "   \"hola \"   " +
                 "       end");
         boolean programIsValid = lexicalAnalysis.generateTokens();

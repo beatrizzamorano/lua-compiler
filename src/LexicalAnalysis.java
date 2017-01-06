@@ -1,11 +1,12 @@
 import javax.swing.*;
 import java.util.LinkedList;
+import java.util.List;
 
 /**
  * Created by beatrizzamorano on 11/4/16.
  */
 public class LexicalAnalysis {
-    private static LinkedList<Token> tokens;
+    private LinkedList<Token> tokens;
     private LexicalStates lexicalStates;
     private String code;
 
@@ -20,6 +21,10 @@ public class LexicalAnalysis {
 
     public void setCode(String code) {
         this.code = code;
+    }
+
+    public List<Token> getTokens() {
+        return this.tokens;
     }
 
     public String printTokens() {

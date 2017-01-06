@@ -9,6 +9,7 @@ import java.io.FileNotFoundException;
 import java.io.FileReader;
 import java.io.IOException;
 import java.io.PrintWriter;
+import java.util.List;
 
 import javax.swing.JEditorPane;
 import javax.swing.JFileChooser;
@@ -162,6 +163,8 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
             boolean isLexicallyValid = lexicalAnalysis.generateTokens();
             if (isLexicallyValid) {
                 tokensTextPane.setText(lexicalAnalysis.printTokens());
+                List<Token> tokens = lexicalAnalysis.getTokens();
+                SyntacticalAnalysis syntacticalAnalysis = new SyntacticalAnalysis(tokens);
             }
 
         }

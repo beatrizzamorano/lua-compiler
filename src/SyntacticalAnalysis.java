@@ -1,3 +1,4 @@
+import javax.swing.*;
 import java.util.List;
 import java.util.ListIterator;
 import java.util.NoSuchElementException;
@@ -9,11 +10,17 @@ public class SyntacticalAnalysis {
     private List<Token> tokens;
     private ListIterator<Token> iterator;
     private Token currentToken;
-    private String errorStack;
+    private String errorStack = "";
 
     public SyntacticalAnalysis(List<Token> tokens) {
         this.tokens = tokens;
-        tokens.listIterator();
+        this.iterator = tokens.listIterator();
+        getNextToken();
+        if(isBlock() && errorStack.isEmpty()) {
+            JOptionPane.showMessageDialog(null, "Sintaxis correcta");
+        } else {
+            JOptionPane.showMessageDialog(null, errorStack);
+        }
     }
 
     private void printError(int error){
@@ -97,13 +104,17 @@ public class SyntacticalAnalysis {
     //chunk ::= {stat [`;´]} [laststat [`;´]]
 
     private boolean isChunk(){
-        while(isStat()){
-           isSemicolon();
+        try {
+            while(isStat()){
+                isSemicolon();
+            }
+            if(isLastStat()){
+                isSemicolon();
+            }
+            return true;
+        } catch (NullPointerException ex) {
+            return true;
         }
-        if(isLastStat()){
-            isSemicolon();
-        }
-        return true;
     }
 
     /*stat ::=
@@ -332,19 +343,25 @@ public class SyntacticalAnalysis {
 
     private boolean isVar(){
         if(isName()){
-            return true;
+            if(isVarTail()) {
+                return true;
+            }
         }else if(isPrefixExp()){
             if(isLeftBracket()){
                 if(isExp()){
                     if(isRightBracket()){
-                        return true;
+                        if(isVarTail()) {
+                            return true;
+                        }
                     }else {
                         printError(504);
                     }
                 }
             }else if(isDot()){
                 if(isName()){
-                    return true;
+                    if(isVarTail()) {
+                        return true;
+                    }
                 }else {
                     printError(511);
                 }
@@ -352,8 +369,33 @@ public class SyntacticalAnalysis {
                 printError(509);
             }
         }
+        //else if (isFunctionCall()) {
+        //    return true;
+        //}
 
         return false;
+    }
+
+    private boolean isVarTail() {
+        if (isLeftBracket()) {
+            if (isExp()) {
+                if (isRightBracket()) {
+                    if (isVarTail()) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        if (isDot()) {
+            if (isName()) {
+                if (isVarTail()) {
+                    return true;
+                }
+            }
+        }
+
+        return true;
     }
 
     //explist ::= {exp `,´} exp
@@ -378,39 +420,72 @@ public class SyntacticalAnalysis {
 
     private boolean isExp(){
         if(isNil()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isFalse()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isTrue()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isNumber()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isString()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isTripleDot()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isFunction()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isPrefixExp()){
-            return true;
+            if (isExpTail()) {
+                return true;
+            }
         }else if(isTableConstructor()){
-            return true;
-        }else if(isExp()){
-            if(isBinop()){
-                if(isExp()){
+            if (isExpTail()) {
+                return true;
+            }
+        }
+        else if(isUnop()){
+            if(isExp()){
+                if (isExpTail()) {
                     return true;
                 }
-            }else{
-                printError(514);
             }
-        }else if(isUnop()){
-            if(isExp()){
+        } else if (isVar()) {
+            if (isExpTail()) {
+                return true;
+            }
+        } else if (isFunctionCall()) {
+            if (isExpTail()) {
                 return true;
             }
         }
 
         return false;
 
+    }
+
+    private boolean isExpTail() {
+        if (isBinop()) {
+            if (isExp()) {
+                if (isExpTail()) {
+                    return true;
+                }
+            }
+        }
+
+        return true;
     }
 
 
@@ -431,18 +506,14 @@ public class SyntacticalAnalysis {
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
 
-    private boolean isPrefixExp(){
-        if(isVar()){
-            return true;
-        }else if(isFunctionCall()){
-            return true;
-        }else if(isLeftParenthesis()){
+    private boolean isPrefixExp() {
+        if(isLeftParenthesis()){
             if(isExp()){
                 if(isRightParenthesis()){
                     return true;
                 }else printError(507);
             }
-        }else printError(509);
+        }
 
         return false;
     }
@@ -451,16 +522,36 @@ public class SyntacticalAnalysis {
     //functioncall ::=  prefixexp args | prefixexp `:´ Name args
 
     private boolean isFunctionCall(){
-        if(isPrefixExp()){
-            if(isArgs()) {
-                return true;
-            }else if(isColon()){
-                if(isName()){
-                    if(isArgs()){
-                        return true;
+        if (isVar()) {
+            if (isArgs()) {
+                if (isFunctionCallTail()) {
+                    return true;
+                }
+            } else if (isColon()) {
+                if (isName()) {
+                    if (isArgs()) {
+                        if (isFunctionCallTail()) {
+                            return true;
+                        }
                     }
-                }else {
-                    printError(508);
+                }
+            }
+        } else if (isLeftParenthesis()) {
+            if (isExp()) {
+                if (isRightParenthesis()) {
+                    if (isArgs()) {
+                        if (isFunctionCallTail()) {
+                            return true;
+                        }
+                    } else if (isColon()) {
+                        if (isName()) {
+                            if (isArgs()) {
+                                if (isFunctionCallTail()) {
+                                    return true;
+                                }
+                            }
+                        }
+                    }
                 }
             }
         }
@@ -468,6 +559,23 @@ public class SyntacticalAnalysis {
         return false;
     }
 
+    private boolean isFunctionCallTail() {
+        if (isArgs()) {
+            if (isFunctionCallTail()) {
+                return true;
+            }
+        } else if (isColon()) {
+            if (isName()) {
+                if (isArgs()) {
+                    if (isFunctionCallTail()) {
+                        return true;
+                    }
+                }
+            }
+        }
+
+        return true;
+    }
 
     //args ::=  `(´ [explist] `)´ | tableconstructor | String
 
@@ -492,13 +600,19 @@ public class SyntacticalAnalysis {
     //function ::= function funcbody
 
     private boolean isFunction(){
-        if(isFunction()){
+        if(isFunctionKeyword()){
             if(isFuncBody()) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    private boolean isFunctionKeyword() {
+        if (currentToken.id != 208) return false;
+        getNextToken();
+        return true;
     }
 
     //funcbody ::= `(´ [parlist] `)´ block end
@@ -634,301 +748,301 @@ public class SyntacticalAnalysis {
 
 
     private boolean isName() {
-        if (currentToken.lineNumber != 100) return false;
+        if (currentToken.id != 100) return false;
         getNextToken();
         return true;
     }
 
     private boolean isDot() {
-        if (currentToken.lineNumber != 125) return false;
+        if (currentToken.id != 125) return false;
         getNextToken();
         return true;
     }
 
     private boolean isEnd() {
-        if (currentToken.lineNumber != 205) return false;
+        if (currentToken.id != 205) return false;
         getNextToken();
         return true;
     }
 
     private boolean isBreak() {
-        if (currentToken.lineNumber != 201) return false;
+        if (currentToken.id != 201) return false;
         getNextToken();
         return true;
     }
 
     private boolean isReturn() {
-        if (currentToken.lineNumber != 216) return false;
+        if (currentToken.id != 216) return false;
         getNextToken();
         return true;
     }
 
 
     private boolean isAssign() {
-        if (currentToken.lineNumber != 115) return false;
+        if (currentToken.id != 115) return false;
         getNextToken();
         return true;
     }
 
     private boolean isRightBracket() {
-        if (currentToken.lineNumber != 121) return false;
+        if (currentToken.id != 121) return false;
         getNextToken();
         return true;
     }
 
     private boolean isString() {
-        if (currentToken.lineNumber != 128) return false;
+        if (currentToken.id != 128) return false;
         getNextToken();
         return true;
     }
 
     private boolean isColon() {
-        if (currentToken.lineNumber != 123) return false;
+        if (currentToken.id != 123) return false;
         getNextToken();
         return true;
     }
 
     private boolean isNumber() {
-        if (currentToken.lineNumber != 101) return false;
+        if (currentToken.id != 101) return false;
         getNextToken();
         return true;
     }
 
     private boolean isTrue() {
-        if (currentToken.lineNumber != 218) return false;
+        if (currentToken.id != 218) return false;
         getNextToken();
         return true;
     }
 
     private boolean isFalse() {
-        if (currentToken.lineNumber != 206) return false;
+        if (currentToken.id != 206) return false;
         getNextToken();
         return true;
     }
 
     private boolean isNil() {
-        if (currentToken.lineNumber != 212) return false;
+        if (currentToken.id != 212) return false;
         getNextToken();
         return true;
     }
 
 
     private boolean isLocal() {
-        if (currentToken.lineNumber != 211) return false;
+        if (currentToken.id != 211) return false;
         getNextToken();
         return true;
     }
 
     private boolean isIn() {
-        if (currentToken.lineNumber != 210) return false;
+        if (currentToken.id != 210) return false;
         getNextToken();
         return true;
     }
 
     private boolean isFor() {
-        if (currentToken.lineNumber != 207) return false;
+        if (currentToken.id != 207) return false;
         getNextToken();
         return true;
     }
 
 
     private boolean isElse() {
-        if (currentToken.lineNumber != 203) return false;
+        if (currentToken.id != 203) return false;
         getNextToken();
         return true;
     }
 
 
     private boolean isElseIf() {
-        if (currentToken.lineNumber != 204) return false;
+        if (currentToken.id != 204) return false;
         getNextToken();
         return true;
     }
 
 
     private boolean isThen() {
-        if (currentToken.lineNumber != 217) return false;
+        if (currentToken.id != 217) return false;
         getNextToken();
         return true;
     }
 
     private boolean isIf() {
-        if (currentToken.lineNumber != 209) return false;
+        if (currentToken.id != 209) return false;
         getNextToken();
         return true;
     }
 
     private boolean isUntil() {
-        if (currentToken.lineNumber != 219) return false;
+        if (currentToken.id != 219) return false;
         getNextToken();
         return true;
     }
 
     private boolean isRepeat() {
-        if (currentToken.lineNumber != 215) return false;
+        if (currentToken.id != 215) return false;
         getNextToken();
         return true;
     }
 
     private boolean isWhile() {
-        if (currentToken.lineNumber != 220) return false;
+        if (currentToken.id != 220) return false;
         getNextToken();
         return true;
     }
 
     private boolean isDo() {
-        if (currentToken.lineNumber != 202) return false;
+        if (currentToken.id != 202) return false;
         getNextToken();
         return true;
     }
 
 
     private boolean isRightParenthesis(){
-        if (currentToken.lineNumber != 116) return false;
+        if (currentToken.id != 117) return false;
         getNextToken();
         return true;
     }
 
     private boolean isLeftParenthesis(){
-        if (currentToken.lineNumber != 117) return false;
+        if (currentToken.id != 116) return false;
         getNextToken();
         return true;
     }
 
     private boolean isLeftCurlyBracket() {
-        if (currentToken.lineNumber != 118) return false;
+        if (currentToken.id != 118) return false;
         getNextToken();
         return true;
     }
 
     private boolean isRightCurlyBracket() {
-        if (currentToken.lineNumber != 119) return false;
+        if (currentToken.id != 119) return false;
         getNextToken();
         return true;
     }
 
     private boolean isLeftBracket() {
-        if (currentToken.lineNumber != 120) return false;
+        if (currentToken.id != 120) return false;
         getNextToken();
         return true;
     }
 
     private boolean isSemicolon() {
-        if (currentToken.lineNumber != 122) return false;
+        if (currentToken.id != 122) return false;
         getNextToken();
         return true;
     }
 
     private boolean isComma() {
-        if (currentToken.lineNumber != 124) return false;
+        if (currentToken.id != 124) return false;
         getNextToken();
         return true;
     }
 
     private boolean isHash() {
-        if (currentToken.lineNumber != 108) return false;
+        if (currentToken.id != 108) return false;
         getNextToken();
         return true;
     }
 
     private boolean isNot() {
-        if (currentToken.lineNumber != 213) return false;
+        if (currentToken.id != 213) return false;
         getNextToken();
         return true;
     }
 
     private boolean isOr() {
-        if (currentToken.lineNumber != 214) return false;
+        if (currentToken.id != 214) return false;
         getNextToken();
         return true;
     }
 
     private boolean isAnd() {
-        if (currentToken.lineNumber != 200) return false;
+        if (currentToken.id != 200) return false;
         getNextToken();
         return true;
     }
 
     private boolean isDifferent() {
-        if (currentToken.lineNumber != 110) return false;
+        if (currentToken.id != 110) return false;
         getNextToken();
         return true;
     }
 
     private boolean isEqual() {
-        if (currentToken.lineNumber != 109) return false;
+        if (currentToken.id != 109) return false;
         getNextToken();
         return true;
     }
 
     private boolean isGreaterOrEqualThan() {
-        if (currentToken.lineNumber != 112) return false;
+        if (currentToken.id != 112) return false;
         getNextToken();
         return true;
     }
 
     private boolean isGreaterThan() {
-        if (currentToken.lineNumber != 114) return false;
+        if (currentToken.id != 114) return false;
         getNextToken();
         return true;
     }
 
     private boolean isLessOrEqualThan() {
-        if (currentToken.lineNumber != 111) return false;
+        if (currentToken.id != 111) return false;
         getNextToken();
         return true;
     }
 
     private boolean isLessThan() {
-        if (currentToken.lineNumber != 113) return false;
+        if (currentToken.id != 113) return false;
         getNextToken();
         return true;
     }
 
     private boolean isDoubleDot() {
-        if (currentToken.lineNumber != 126) return false;
+        if (currentToken.id != 126) return false;
         getNextToken();
         return true;
     }
 
     private boolean isTripleDot() {
-        if (currentToken.lineNumber != 127) return false;
+        if (currentToken.id != 127) return false;
         getNextToken();
         return true;
     }
 
     private boolean isPercent() {
-        if (currentToken.lineNumber != 106) return false;
+        if (currentToken.id != 106) return false;
         getNextToken();
         return true;
     }
 
     private boolean isCircumflexAccent() {
-        if (currentToken.lineNumber != 107) return false;
+        if (currentToken.id != 107) return false;
         getNextToken();
         return true;
     }
 
     private boolean isSlash() {
-        if (currentToken.lineNumber != 105) return false;
+        if (currentToken.id != 105) return false;
         getNextToken();
         return true;
     }
 
     private boolean isAsterisk() {
-        if (currentToken.lineNumber != 104) return false;
+        if (currentToken.id != 104) return false;
         getNextToken();
         return true;
     }
 
     private boolean isMinus() {
-        if (currentToken.lineNumber != 103) return false;
+        if (currentToken.id != 103) return false;
         getNextToken();
         return true;
     }
 
     private boolean isPlus() {
-        if (currentToken.lineNumber != 102) return false;
+        if (currentToken.id != 102) return false;
         getNextToken();
         return true;
 
