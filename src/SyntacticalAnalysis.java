@@ -52,6 +52,7 @@ public class SyntacticalAnalysis {
             case 517 : return " 'then' expected.";
             case 518 : return " 'In' expected.";
             case 519 : return " 'Function' expected.";
+            case 520 : return " '(' expected.";
 
 
             default : return "";
@@ -132,13 +133,35 @@ public class SyntacticalAnalysis {
 
 
     private boolean isStat(){
-        if(isVarList()){
-            if(isAssign()){
-                if(isExpList()){
-                    return true;
+        int varCount = isVarListWithCount();
+        if(varCount > 0){
+            if (varCount > 1) {
+                if(isAssign()){
+                    if(isExpList()){
+                        return true;
+                    }
+                }else {
+                    printError(503);
                 }
-            }else {
-                printError(503);
+            } else if (varCount == 1){
+                if (isArgs()) {
+                    if (isFunctionCallTail()) {
+                        return true;
+                    }
+                } else if (isColon()) {
+                    if (isName()) {
+                        if (isArgs()) {
+                            if (isFunctionCallTail()) {
+                                return true;
+                            }
+                        }
+                    }
+                } else if(isAssign()){
+                    if(isExpList()){
+                        return true;
+                    }
+                }
+                return true;
             }
         } else if(isDo()){
             if(isBlock()){
@@ -207,7 +230,8 @@ public class SyntacticalAnalysis {
                 }
             }
         }else if(isFor()){
-            if(isName()){
+            int nameCount = isNameWithCount();
+            if(nameCount == 1){
                 if(isAssign()){
                     if(isExp()){
                         if(isComma()){
@@ -241,10 +265,24 @@ public class SyntacticalAnalysis {
                             return false;
                         }
                     }
+                } else if(isIn()){
+                    if(isExpList()){
+                        if(isDo()){
+                            if(isBlock()){
+                                if(isEnd()){
+                                    return true;
+                                } else {
+                                    printError(513);
+                                }
+                            }
+                        }else {
+                            printError(515);
+                        }
+                    }
                 } else {
-                    printError(503);
+                    printError(518);
                 }
-            } else if(isNameList()){
+            } else if(nameCount > 1){
                 if(isIn()){
                     if(isExpList()){
                         if(isDo()){
@@ -267,7 +305,7 @@ public class SyntacticalAnalysis {
                 return false;
             }
 
-        }else if(isFunction()){
+        }else if(isFunctionKeyword()){
             if(isFuncName()){
                 if(isFuncBody()){
                     return true;
@@ -287,8 +325,6 @@ public class SyntacticalAnalysis {
                     if (!isExpList()) {
                         return false;
                     }
-                } else {
-                    printError(503);
                 }
                 return true;
             } else {
@@ -313,6 +349,22 @@ public class SyntacticalAnalysis {
         }
 
         return false;
+    }
+
+    private int isNameWithCount() {
+        int count = 0;
+        if (isName()) {
+            count++;
+            while(isComma()) {
+                count++;
+                if (!isName()) {
+                    printError(511);
+                    return -1;
+                }
+            }
+        }
+
+        return count;
     }
 
 
@@ -346,7 +398,8 @@ public class SyntacticalAnalysis {
             if(isVarTail()) {
                 return true;
             }
-        }else if(isPrefixExp()){
+        }
+        else if(isPrefixExp()){
             if(isLeftBracket()){
                 if(isExp()){
                     if(isRightBracket()){
@@ -369,9 +422,32 @@ public class SyntacticalAnalysis {
                 printError(509);
             }
         }
-        //else if (isFunctionCall()) {
-        //    return true;
-        //}
+        else if(isLeftParenthesis()) {
+            if (isExp()) {
+                if (isRightParenthesis()) {
+                    if (isArgs()) {
+                        if (isFunctionCallTail()) {
+                            return true;
+                        }
+                    }
+                    else if (isColon()) {
+                        if (isName()) {
+                            if (isArgs()) {
+                                if (isFunctionCallTail()) {
+                                    return true;
+                                }
+                            }
+                        } else {
+                            printError(511);
+                        }
+                    } else {
+                        printError(508);
+                    }
+                } else {
+                    printError(507);
+                }
+            }
+        }
 
         return false;
     }
@@ -383,19 +459,42 @@ public class SyntacticalAnalysis {
                     if (isVarTail()) {
                         return true;
                     }
+                } else {
+                    printError(504);
+                    return false;
                 }
             }
-        }
-
-        if (isDot()) {
+        } else if (isDot()) {
             if (isName()) {
                 if (isVarTail()) {
                     return true;
                 }
+            } else {
+                printError(511);
             }
+        } else if (isArgs()) {
+            if (isFunctionCallTail()) {
+                if (isVarTail()) {
+                    return true;
+                }
+            }
+        } else if (isColon()) {
+            if (isName()) {
+                if (isArgs()) {
+                    if (isFunctionCallTail()) {
+                        if (isVarTail()) {
+                            return true;
+                        }
+                    }
+                }
+            } else {
+                printError(511);
+            }
+        } else {
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     //explist ::= {exp `,´} exp
@@ -463,7 +562,20 @@ public class SyntacticalAnalysis {
                 }
             }
         } else if (isVar()) {
-            if (isExpTail()) {
+            if (isArgs()) {
+                if (isFunctionCallTail()) {
+                    return true;
+                }
+            } else if (isColon()) {
+                if (isName()) {
+                    if (isFunctionCallTail()) {
+                        return true;
+                    }
+                } else {
+                    printError(511);
+                }
+            }
+            else if (isExpTail()) {
                 return true;
             }
         } else if (isFunctionCall()) {
@@ -491,17 +603,20 @@ public class SyntacticalAnalysis {
 
     //varlist ::= var {`,´ var}
 
-    private boolean isVarList(){
+    private int isVarListWithCount(){
+        int count = 0;
+
         if(isVar()){
+            count++;
             while(isComma()){
+                count++;
                 if(!isVar()){
-                    return false;
+                    return -1;
                 }
             }
-            return true;
         }
 
-        return false;
+        return count;
     }
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
@@ -511,7 +626,9 @@ public class SyntacticalAnalysis {
             if(isExp()){
                 if(isRightParenthesis()){
                     return true;
-                }else printError(507);
+                }else {
+                    printError(507);
+                }
             }
         }
 
@@ -535,6 +652,8 @@ public class SyntacticalAnalysis {
                         }
                     }
                 }
+            } else {
+                printError(508);
             }
         } else if (isLeftParenthesis()) {
             if (isExp()) {
@@ -551,7 +670,11 @@ public class SyntacticalAnalysis {
                                 }
                             }
                         }
+                    } else {
+                        printError(508);
                     }
+                } else {
+                    printError(507);
                 }
             }
         }
@@ -571,10 +694,14 @@ public class SyntacticalAnalysis {
                         return true;
                     }
                 }
+            } else {
+                printError(511);
             }
+        } else {
+            return true;
         }
 
-        return true;
+        return false;
     }
 
     //args ::=  `(´ [explist] `)´ | tableconstructor | String
@@ -584,9 +711,13 @@ public class SyntacticalAnalysis {
             if(isExpList()){
                 if(isRightParenthesis()){
                     return true;
+                } else {
+                    printError(507);
                 }
             } else if(isRightParenthesis()) {
                 return true;
+            } else {
+                printError(507);
             }
         }else if(isTableConstructor()){
             return true;
@@ -642,6 +773,7 @@ public class SyntacticalAnalysis {
             }
         }
 
+        printError(520);
         return false;
     }
 
@@ -692,10 +824,14 @@ public class SyntacticalAnalysis {
                 if(isRightCurlyBracket()){
                     return true;
 
-                }else printError(505);
+                } else {
+                    printError(505);
+                }
 
-            }else if(isRightCurlyBracket()) {
+            } else if(isRightCurlyBracket()) {
                 return true;
+            } else {
+                printError(505);
             }
         }
 
@@ -731,16 +867,16 @@ public class SyntacticalAnalysis {
                    printError(504);
                 }
             }
-        } else {
-            if (isName()) {
-                if (isAssign()) {
-                    if (isExp()) {
-                        return true;
-                    }
-                } else {
-                    printError(503);
+        } else if (isName()) {
+            if (isAssign()) {
+                if (isExp()) {
+                    return true;
                 }
-            } else if (isExp()) return true;
+            } else {
+                printError(503);
+            }
+        } else if (isExp()) {
+            return true;
         }
 
         return false;

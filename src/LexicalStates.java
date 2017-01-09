@@ -761,6 +761,9 @@ public class LexicalStates {
             HashMap row = matrix.get(currentState);
             return (int) row.get(key);
         } catch (NullPointerException npe) {
+            if (currentState == 6) {
+                return 6;
+            }
             return 500;
         }
     }
