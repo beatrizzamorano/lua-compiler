@@ -6,10 +6,12 @@ public class Token {
     public int id;
     public int lineNumber;
 
+
     public Token (String lexeme, int id, int lineNumber){
         this.lexeme = lexeme;
         this.id = id;
         this.lineNumber = lineNumber;
+
     }
 
     @Override

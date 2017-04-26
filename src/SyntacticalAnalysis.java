@@ -1,7 +1,5 @@
 import javax.swing.*;
-import java.util.List;
-import java.util.ListIterator;
-import java.util.NoSuchElementException;
+import java.util.*;
 
 /**
  * Created by beatrizzamorano on 1/1/17.
@@ -11,10 +9,12 @@ public class SyntacticalAnalysis {
     private ListIterator<Token> iterator;
     private Token currentToken;
     private String errorStack = "";
+    private Map<String, Variable> variables;
 
     public SyntacticalAnalysis(List<Token> tokens) {
         this.tokens = tokens;
         this.iterator = tokens.listIterator();
+        this.variables = new HashMap<>();
         getNextToken();
         if(isBlock() && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
@@ -150,6 +150,7 @@ public class SyntacticalAnalysis {
                     }
                 } else if (isColon()) {
                     if (isName()) {
+                        getNextToken();
                         if (isArgs()) {
                             if (isFunctionCallTail()) {
                                 return true;
@@ -307,6 +308,10 @@ public class SyntacticalAnalysis {
 
         }else if(isFunctionKeyword()){
             if(isFuncName()){
+                Token funcName = peekPreviousToken();
+                Variable variable = new Variable(funcName.lexeme, TypeEnum.FUNCTION);
+                variables.put(funcName.lexeme, variable);
+
                 if(isFuncBody()){
                     return true;
                 }
@@ -314,6 +319,7 @@ public class SyntacticalAnalysis {
         }else if(isLocal()){
             if(isFunction()){
                 if(isName()){
+                    getNextToken();
                     if(isFuncBody()){
                         return true;
                     }
@@ -354,6 +360,7 @@ public class SyntacticalAnalysis {
     private int isNameWithCount() {
         int count = 0;
         if (isName()) {
+            getNextToken();
             count++;
             while(isComma()) {
                 count++;
@@ -361,6 +368,7 @@ public class SyntacticalAnalysis {
                     printError(511);
                     return -1;
                 }
+                getNextToken();
             }
         }
 
@@ -372,14 +380,17 @@ public class SyntacticalAnalysis {
     //funcname ::= Name {`.´ Name} [`:´ Name]
     private boolean isFuncName(){
         if(isName()){
+            getNextToken();
             while (isDot()){
                 if(!isName()){
                     printError(511);
                     return false;
                 }
+                getNextToken();
             }
             if(isColon()){
                 if(isName()){
+                    getNextToken();
                     return true;
                 }else {
                     printError(511);
@@ -395,6 +406,14 @@ public class SyntacticalAnalysis {
 
     private boolean isVar(){
         if(isName()){
+            String variableName = currentToken.lexeme;
+            boolean variableAlreadyExists = variables.containsKey(variableName);
+            if (!variableAlreadyExists) {
+                Variable variable = new Variable(currentToken.lexeme, TypeEnum.NIL);
+                variables.put(variableName, variable);
+            }
+
+            getNextToken();
             if(isVarTail()) {
                 return true;
             }
@@ -412,6 +431,7 @@ public class SyntacticalAnalysis {
                 }
             }else if(isDot()){
                 if(isName()){
+                    getNextToken();
                     if(isVarTail()) {
                         return true;
                     }
@@ -432,6 +452,7 @@ public class SyntacticalAnalysis {
                     }
                     else if (isColon()) {
                         if (isName()) {
+                            getNextToken();
                             if (isArgs()) {
                                 if (isFunctionCallTail()) {
                                     return true;
@@ -466,6 +487,7 @@ public class SyntacticalAnalysis {
             }
         } else if (isDot()) {
             if (isName()) {
+                getNextToken();
                 if (isVarTail()) {
                     return true;
                 }
@@ -480,6 +502,7 @@ public class SyntacticalAnalysis {
             }
         } else if (isColon()) {
             if (isName()) {
+                getNextToken();
                 if (isArgs()) {
                     if (isFunctionCallTail()) {
                         if (isVarTail()) {
@@ -568,6 +591,7 @@ public class SyntacticalAnalysis {
                 }
             } else if (isColon()) {
                 if (isName()) {
+                    getNextToken();
                     if (isFunctionCallTail()) {
                         return true;
                     }
@@ -646,6 +670,7 @@ public class SyntacticalAnalysis {
                 }
             } else if (isColon()) {
                 if (isName()) {
+                    getNextToken();
                     if (isArgs()) {
                         if (isFunctionCallTail()) {
                             return true;
@@ -664,6 +689,7 @@ public class SyntacticalAnalysis {
                         }
                     } else if (isColon()) {
                         if (isName()) {
+                            getNextToken();
                             if (isArgs()) {
                                 if (isFunctionCallTail()) {
                                     return true;
@@ -689,6 +715,7 @@ public class SyntacticalAnalysis {
             }
         } else if (isColon()) {
             if (isName()) {
+                getNextToken();
                 if (isArgs()) {
                     if (isFunctionCallTail()) {
                         return true;
@@ -803,11 +830,13 @@ public class SyntacticalAnalysis {
 
     private boolean isNameList(){
         if(isName()){
+            getNextToken();
             while (isComma()) {
                 if (!isName()) {
                     printError(511);
                     return false;
                 }
+                getNextToken();
             }
             return true;
         }
@@ -868,6 +897,7 @@ public class SyntacticalAnalysis {
                 }
             }
         } else if (isName()) {
+            getNextToken();
             if (isAssign()) {
                 if (isExp()) {
                     return true;
@@ -885,7 +915,6 @@ public class SyntacticalAnalysis {
 
     private boolean isName() {
         if (currentToken.id != 100) return false;
-        getNextToken();
         return true;
     }
 
@@ -1191,6 +1220,14 @@ public class SyntacticalAnalysis {
         catch (NoSuchElementException exception) {
             currentToken = null;
         }
+    }
+
+    public Token peekPreviousToken() {
+        iterator.previous();
+        Token previous = iterator.previous();
+        iterator.next();
+        iterator.next();
+        return previous;
     }
 
 }
