@@ -1,19 +1,16 @@
 /**
  * Created by beatrizzamorano on 3/15/17.
  */
-public class Parameters {
+public class Parameter {
     private int id;
     private TypeEnum type;
-    private String lexeme;
+    private String name;
 
-
-
-    public Parameters(int id, TypeEnum type, String lexeme) {
-        this.id = id;
-        this.type = type;
-        this.lexeme = lexeme;
+    public Parameter(String name) {
+        this.id = hashCode();
+        this.type = TypeEnum.NIL;
+        this.name = name;
     }
-
 
     public int getId() {
         return id;
@@ -31,12 +28,12 @@ public class Parameters {
         this.type = type;
     }
 
-    public String getLexeme() {
-        return lexeme;
+    public String getName() {
+        return name;
     }
 
-    public void setLexeme(String lexeme) {
-        this.lexeme = lexeme;
+    public void setName(String name) {
+        this.name = name;
     }
 
 }

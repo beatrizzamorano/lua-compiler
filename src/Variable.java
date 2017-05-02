@@ -1,4 +1,4 @@
-
+import java.util.List;
 
 /**
  * Created by beatrizzamorano on 3/12/17.
@@ -7,30 +7,23 @@ public class Variable {
     private int id;
     private TypeEnum type;
     private String name;
-    Token token;
-
+    private Object value;
+    private List<Variable> variables;
 
     //hashcode
     //private String valor;
     //private String direccion;
 
 
-
     public Variable(String name) {
         this.name = name;
     }
 
-    public Variable(String name, TypeEnum type, Token token, int id) {
+    public Variable(String name, TypeEnum type) {
         this.name = name;
         this.type = type;
-        this.token = token;
         this.id = this.hashCode();
-
     }
-
-
-
-
 
     public TypeEnum getType() {
         return this.type;
@@ -48,10 +41,6 @@ public class Variable {
         this.name = name;
     }
 
-    public Token getToken() { return token; }
-
-    public void setToken(Token token) { this.token = token; }
-
-
+    public void setValue(Object value) { this.value = value; }
 
 }
