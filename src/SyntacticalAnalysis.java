@@ -10,11 +10,16 @@ public class SyntacticalAnalysis {
     private Token currentToken;
     private String errorStack = "";
     private Map<String, Variable> variables;
+    private Program program;
+    private boolean hasReturnValue;
+    private Function function;
 
     public SyntacticalAnalysis(List<Token> tokens) {
         this.tokens = tokens;
         this.iterator = tokens.listIterator();
         this.variables = new HashMap<>();
+        program = new Program();
+
         getNextToken();
         if(isBlock() && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
@@ -53,6 +58,9 @@ public class SyntacticalAnalysis {
             case 518 : return " 'In' expected.";
             case 519 : return " 'Function' expected.";
             case 520 : return " '(' expected.";
+            case 521 : return "Function already declared";
+            case 522 : return "Tried to declare a local variable with the name of an existing global variable.";
+            case 523 : return "Tried to declare a local variable with the name of an existing function.";
 
 
             default : return "";
@@ -128,7 +136,6 @@ public class SyntacticalAnalysis {
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
 		 for namelist in explist do block end |
 		 function funcname funcbody |
-		 local function Name funcbody |
 		 local namelist [`=´ explist] */
 
 
@@ -306,27 +313,26 @@ public class SyntacticalAnalysis {
                 return false;
             }
 
-        }else if(isFunctionKeyword()){
+        } else if(isFunctionKeyword()){
             if(isFuncName()){
-                Token funcName = peekPreviousToken();
-                Variable variable = new Variable(funcName.lexeme, TypeEnum.FUNCTION);
-                variables.put(funcName.lexeme, variable);
-
                 if(isFuncBody()){
                     return true;
                 }
             }
         }else if(isLocal()){
-            if(isFunction()){
-                if(isName()){
-                    getNextToken();
-                    if(isFuncBody()){
-                        return true;
+            List<String> nameList = isNameList();
+
+            if(nameList != null){
+                for (String name : nameList) {
+                    Variable variable = new Variable(name);
+                    try {
+                        program.addLocalVariable(function.getName(), variable);
+                    } catch (SemanthicException ex) {
+                        printError(ex.getErrorNumber());
+                        return false;
                     }
-                } else {
-                    printError(511);
                 }
-            } else if(isNameList()){
+
                 if(isAssign()){
                     if (!isExpList()) {
                         return false;
@@ -346,6 +352,7 @@ public class SyntacticalAnalysis {
     private boolean isLastStat(){
         if(isReturn()){
             if(isExpList()){
+                this.hasReturnValue = true;
                 return true;
             }
             return true;
@@ -380,25 +387,10 @@ public class SyntacticalAnalysis {
     //funcname ::= Name {`.´ Name} [`:´ Name]
     private boolean isFuncName(){
         if(isName()){
+            Token token = peekPreviousToken();
             getNextToken();
-            while (isDot()){
-                if(!isName()){
-                    printError(511);
-                    return false;
-                }
-                getNextToken();
-            }
-            if(isColon()){
-                if(isName()){
-                    getNextToken();
-                    return true;
-                }else {
-                    printError(511);
-                }
-            }
             return true;
         }
-
         return false;
     }
 
@@ -776,22 +768,42 @@ public class SyntacticalAnalysis {
     //funcbody ::= `(´ [parlist] `)´ block end
 
     private boolean isFuncBody(){
+        function = new Function();
+        Token functionName = peekPreviousToken();
+        function.setName(functionName.lexeme);
+        try {
+            program.addFunction(function);
+        } catch (SemanthicException ex) {
+            printError(ex.getErrorNumber());
+            return false;
+        }
+
         if(isLeftParenthesis()){
-            if(isParList()){
-                if(isRightParenthesis()){
+            List<Parameter> parameters = isParList();
+            if(parameters != null){
+                function.addParameters(parameters);
+                program.updateFunction(function);
+                if(isRightParenthesis()) {
                     if(isBlock()){
+                        function.setHasReturnValue(this.hasReturnValue);
+                        program.updateFunction(function);
+                        hasReturnValue = false;
+
                         if(isEnd()){
                             return true;
-                        }else{
-                            printError(513);
                         }
+                    } else{
+                        printError(513);
                     }
-                } else {
-                    printError(507);
                 }
             } else if(isRightParenthesis()){
                 if(isBlock()){
+                    function.setHasReturnValue(this.hasReturnValue);
+                    program.updateFunction(function);
+                    hasReturnValue = false;
+
                     if(isEnd()){
+                        function = null;
                         return true;
                     }else{
                         printError(513);
@@ -808,40 +820,41 @@ public class SyntacticalAnalysis {
     //parlist ::= namelist [`,´ `...´] | `...´
 
 
-    private boolean isParList(){
-        if(isNameList()) {
-            if (isComma()) {
-                if(isTripleDot()){
-                    return true;
-                } else{
-                    printError(512);
-                }
+    private List<Parameter> isParList(){
+        List<String> nameList = isNameList();
+        if(nameList != null) {
+            ArrayList<Parameter> parameters = new ArrayList<>();
+            for (String name : nameList) {
+                Parameter parameter = new Parameter(name);
+                parameters.add(parameter);
             }
-            return true;
-        }
-        else if(isTripleDot()) {
-            return true;
+
+            return parameters;
         }
 
-        return false;
+        return null;
     }
 
     //namelist ::= Name {`,´ Name}
 
-    private boolean isNameList(){
+    private List<String> isNameList(){
+        ArrayList nameList = new ArrayList();
         if(isName()){
+            nameList.add(currentToken.lexeme);
+
             getNextToken();
             while (isComma()) {
                 if (!isName()) {
                     printError(511);
-                    return false;
+                    return null;
                 }
+                nameList.add(currentToken.lexeme);
                 getNextToken();
             }
-            return true;
+            return nameList;
         }
 
-        return false;
+        return null;
     }
 
 
