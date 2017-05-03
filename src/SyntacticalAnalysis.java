@@ -9,15 +9,14 @@ public class SyntacticalAnalysis {
     private ListIterator<Token> iterator;
     private Token currentToken;
     private String errorStack = "";
-    private Map<String, Variable> variables;
     private Program program;
     private boolean hasReturnValue;
     private Function function;
+    private Queue<String> variableConstruct;
 
     public SyntacticalAnalysis(List<Token> tokens) {
         this.tokens = tokens;
         this.iterator = tokens.listIterator();
-        this.variables = new HashMap<>();
         program = new Program();
 
         getNextToken();
@@ -140,9 +139,14 @@ public class SyntacticalAnalysis {
 
 
     private boolean isStat(){
-        int varCount = isVarListWithCount();
-        if(varCount > 0){
-            if (varCount > 1) {
+        List<Variable> variables = isVarList();
+
+        if(variables != null && variables.size() > 0){
+            for (Variable variable : variables) {
+                program.addGlobalVariable(variable);
+            }
+
+            if (variables.size() > 1) {
                 if(isAssign()){
                     if(isExpList()){
                         return true;
@@ -150,7 +154,7 @@ public class SyntacticalAnalysis {
                 }else {
                     printError(503);
                 }
-            } else if (varCount == 1){
+            } else if (variables.size() == 1){
                 if (isArgs()) {
                     if (isFunctionCallTail()) {
                         return true;
@@ -396,36 +400,41 @@ public class SyntacticalAnalysis {
 
     //var ::=  Name | prefixexp `[´ exp `]´ | prefixexp `.´ Name
 
-    private boolean isVar(){
-        if(isName()){
+    private Variable isVar(){
+        if(isName()) {
+            variableConstruct = new ArrayDeque<>();
             String variableName = currentToken.lexeme;
-            boolean variableAlreadyExists = variables.containsKey(variableName);
-            if (!variableAlreadyExists) {
-                Variable variable = new Variable(currentToken.lexeme, TypeEnum.NIL);
-                variables.put(variableName, variable);
-            }
+            variableConstruct.add(variableName);
 
             getNextToken();
             if(isVarTail()) {
-                return true;
+                Variable variable = new Variable(variableConstruct);
+                variableConstruct = null;
+                return variable;
             }
         }
-        else if(isPrefixExp()){
-            if(isLeftBracket()){
+        else if(isPrefixExp()) {
+            variableConstruct = new ArrayDeque<>();
+            if(isLeftBracket()) {
                 if(isExp()){
                     if(isRightBracket()){
                         if(isVarTail()) {
-                            return true;
+                            Variable variable = new Variable(variableConstruct);
+                            variableConstruct = null;
+                            return variable;
                         }
                     }else {
                         printError(504);
                     }
                 }
-            }else if(isDot()){
+            } else if(isDot()) {
                 if(isName()){
+                    variableConstruct.add(currentToken.lexeme);
                     getNextToken();
                     if(isVarTail()) {
-                        return true;
+                        Variable variable = new Variable(variableConstruct);
+                        variableConstruct = null;
+                        return variable;
                     }
                 }else {
                     printError(511);
@@ -439,7 +448,7 @@ public class SyntacticalAnalysis {
                 if (isRightParenthesis()) {
                     if (isArgs()) {
                         if (isFunctionCallTail()) {
-                            return true;
+                            return new Variable(TypeEnum.VOID);
                         }
                     }
                     else if (isColon()) {
@@ -447,7 +456,7 @@ public class SyntacticalAnalysis {
                             getNextToken();
                             if (isArgs()) {
                                 if (isFunctionCallTail()) {
-                                    return true;
+                                    return new Variable(TypeEnum.VOID);
                                 }
                             }
                         } else {
@@ -462,7 +471,7 @@ public class SyntacticalAnalysis {
             }
         }
 
-        return false;
+        return null;
     }
 
     private boolean isVarTail() {
@@ -479,6 +488,7 @@ public class SyntacticalAnalysis {
             }
         } else if (isDot()) {
             if (isName()) {
+                variableConstruct.add(currentToken.lexeme);
                 getNextToken();
                 if (isVarTail()) {
                     return true;
@@ -576,7 +586,7 @@ public class SyntacticalAnalysis {
                     return true;
                 }
             }
-        } else if (isVar()) {
+        } else if (isVar() != null) {
             if (isArgs()) {
                 if (isFunctionCallTail()) {
                     return true;
@@ -619,20 +629,23 @@ public class SyntacticalAnalysis {
 
     //varlist ::= var {`,´ var}
 
-    private int isVarListWithCount(){
-        int count = 0;
+    private List<Variable> isVarList(){
+        ArrayList<Variable> variables = new ArrayList<>();
 
-        if(isVar()){
-            count++;
+        Variable variable = isVar();
+        if(variable != null){
+            if (variable.getType() != TypeEnum.VOID) {
+                variables.add(variable);
+            }
             while(isComma()){
-                count++;
-                if(!isVar()){
-                    return -1;
+                variable = isVar();
+                if(variable != null && variable.getType() != TypeEnum.VOID){
+                    variables.add(variable);
                 }
             }
         }
 
-        return count;
+        return variables;
     }
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
@@ -655,7 +668,7 @@ public class SyntacticalAnalysis {
     //functioncall ::=  prefixexp args | prefixexp `:´ Name args
 
     private boolean isFunctionCall(){
-        if (isVar()) {
+        if (isVar() != null) {
             if (isArgs()) {
                 if (isFunctionCallTail()) {
                     return true;

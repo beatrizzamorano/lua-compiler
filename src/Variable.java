@@ -1,4 +1,6 @@
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Queue;
 
 /**
  * Created by beatrizzamorano on 3/12/17.
@@ -10,13 +12,30 @@ public class Variable {
     private Object value;
     private List<Variable> variables;
 
-    //hashcode
-    //private String valor;
-    //private String direccion;
-
-
     public Variable(String name) {
         this.name = name;
+        this.variables = new ArrayList<>();
+        this.type = TypeEnum.NIL;
+        this.id = hashCode();
+    }
+
+    public Variable(Queue<String> variableConstruct) {
+        this.name = variableConstruct.poll();
+        this.variables = new ArrayList<>();
+        this.id = hashCode();
+        this.type = TypeEnum.NIL;
+        Variable currentNode = this;
+
+        while(variableConstruct.peek() != null) {
+            Variable variable = new Variable(variableConstruct.poll());
+            currentNode.addVariable(variable);
+            currentNode = variable;
+        }
+
+    }
+
+    public Variable(TypeEnum type) {
+        this.type = type;
     }
 
     public Variable(String name, TypeEnum type) {
@@ -42,5 +61,9 @@ public class Variable {
     }
 
     public void setValue(Object value) { this.value = value; }
+
+    public void addVariable(Variable variable) {
+        this.variables.add(variable);
+    }
 
 }
