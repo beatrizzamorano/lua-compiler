@@ -2,7 +2,7 @@ import java.util.HashMap;
 import java.util.Objects;
 
 public class Program {
-    private HashMap<Integer, Variable> globalVariables;
+    private HashMap<String, Variable> globalVariables;
     private HashMap<String, Function> functions;
 
     public Program() {
@@ -10,14 +10,25 @@ public class Program {
         this.functions = new HashMap<>();
     }
 
-    public void addGlobalVariable(Variable variable) {
-        this.globalVariables.put(variable.hashCode(), variable);
+    public void addGlobalVariable(Variable variable) throws SemanthicException {
+        for (Function function : functions.values()) {
+            if (Objects.equals(function.getName(), variable.getName())) {
+                throw new SemanthicException(525);
+            }
+        }
+        this.globalVariables.put(variable.getName(), variable);
     }
 
     public void addFunction(Function function) throws SemanthicException {
         for (Function declaredFunction : functions.values()) {
             if (Objects.equals(function.getName(), declaredFunction.getName())) {
                 throw new SemanthicException(521);
+            }
+        }
+
+        for (Variable variable : globalVariables.values()) {
+            if (Objects.equals(function.getName(), variable.getName())) {
+                throw new SemanthicException(524);
             }
         }
         this.functions.put(function.getName(), function);

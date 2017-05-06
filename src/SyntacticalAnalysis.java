@@ -60,7 +60,8 @@ public class SyntacticalAnalysis {
             case 521 : return "Function already declared";
             case 522 : return "Tried to declare a local variable with the name of an existing global variable.";
             case 523 : return "Tried to declare a local variable with the name of an existing function.";
-
+            case 524 : return "Tried to declare a function with the name of an existing global variable.";
+            case 525 : return "Tried to declare a global variable with the name of an existing function.";
 
             default : return "";
         }
@@ -113,10 +114,10 @@ public class SyntacticalAnalysis {
 
     private boolean isChunk(){
         try {
-            while(isStat()){
+            while(isStat()) {
                 isSemicolon();
             }
-            if(isLastStat()){
+            if(isLastStat()) {
                 isSemicolon();
             }
             return true;
@@ -143,7 +144,12 @@ public class SyntacticalAnalysis {
 
         if(variables != null && variables.size() > 0){
             for (Variable variable : variables) {
-                program.addGlobalVariable(variable);
+                try {
+                    program.addGlobalVariable(variable);
+
+                } catch (SemanthicException ex) {
+                    printError(ex.getErrorNumber());
+                }
             }
 
             if (variables.size() > 1) {
@@ -241,7 +247,7 @@ public class SyntacticalAnalysis {
                     printError(517);
                 }
             }
-        }else if(isFor()){
+        } else if (isFor()) {
             int nameCount = isNameWithCount();
             if(nameCount == 1){
                 if(isAssign()){
@@ -275,38 +281,6 @@ public class SyntacticalAnalysis {
                         } else {
                             printError(506);
                             return false;
-                        }
-                    }
-                } else if(isIn()){
-                    if(isExpList()){
-                        if(isDo()){
-                            if(isBlock()){
-                                if(isEnd()){
-                                    return true;
-                                } else {
-                                    printError(513);
-                                }
-                            }
-                        }else {
-                            printError(515);
-                        }
-                    }
-                } else {
-                    printError(518);
-                }
-            } else if(nameCount > 1){
-                if(isIn()){
-                    if(isExpList()){
-                        if(isDo()){
-                            if(isBlock()){
-                                if(isEnd()){
-                                    return true;
-                                } else {
-                                    printError(513);
-                                }
-                            }
-                        }else {
-                            printError(515);
                         }
                     }
                 } else {
