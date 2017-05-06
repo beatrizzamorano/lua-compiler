@@ -1,5 +1,8 @@
 import java.util.HashMap;
+import java.util.List;
 import java.util.Objects;
+import java.util.Optional;
+import java.util.stream.Collectors;
 
 public class Program {
     private HashMap<String, Variable> globalVariables;
@@ -16,7 +19,21 @@ public class Program {
                 throw new SemanthicException(525);
             }
         }
-        this.globalVariables.put(variable.getName(), variable);
+
+        if (globalVariables.containsKey(variable.getName())) {
+            Variable currentVariable = globalVariables.get(variable.getName());
+            Variable newProperty = (Variable) variable.getProperties().values().toArray()[0];
+
+            while (currentVariable.getProperties().containsKey(newProperty.getName()) && !newProperty.getProperties().isEmpty()) {
+                currentVariable = currentVariable.getProperties().get(newProperty.getName());
+                newProperty = (Variable) newProperty.getProperties().values().toArray()[0];
+            }
+
+            currentVariable.addProperty(newProperty);
+
+        } else {
+            this.globalVariables.put(variable.getName(), variable);
+        }
     }
 
     public void addFunction(Function function) throws SemanthicException {

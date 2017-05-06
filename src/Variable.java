@@ -1,4 +1,5 @@
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Queue;
 
@@ -10,25 +11,25 @@ public class Variable {
     private TypeEnum type;
     private String name;
     private Object value;
-    private List<Variable> variables;
+    private HashMap<String, Variable> properties;
 
     public Variable(String name) {
         this.name = name;
-        this.variables = new ArrayList<>();
+        this.properties = new HashMap<>();
         this.type = TypeEnum.NIL;
         this.id = hashCode();
     }
 
     public Variable(Queue<String> variableConstruct) {
         this.name = variableConstruct.poll();
-        this.variables = new ArrayList<>();
+        this.properties = new HashMap<>();
         this.id = hashCode();
         this.type = TypeEnum.NIL;
         Variable currentNode = this;
 
         while(variableConstruct.peek() != null) {
             Variable variable = new Variable(variableConstruct.poll());
-            currentNode.addVariable(variable);
+            currentNode.addProperty(variable);
             currentNode = variable;
         }
 
@@ -62,8 +63,12 @@ public class Variable {
 
     public void setValue(Object value) { this.value = value; }
 
-    public void addVariable(Variable variable) {
-        this.variables.add(variable);
+    public void addProperty(Variable property) {
+        this.properties.put(property.getName(), property);
+    }
+
+    public HashMap<String, Variable> getProperties() {
+        return this.properties;
     }
 
 }
