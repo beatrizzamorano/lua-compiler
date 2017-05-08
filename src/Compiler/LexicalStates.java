@@ -1,3 +1,5 @@
+package Compiler;
+
 import javax.swing.*;
 import java.util.HashMap;
 

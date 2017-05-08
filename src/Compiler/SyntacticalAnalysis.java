@@ -1,3 +1,8 @@
+package Compiler;
+
+import Expressions.ASTNode;
+import Expressions.ShuntingYardParser;
+
 import javax.swing.*;
 import java.util.*;
 
@@ -13,11 +18,15 @@ public class SyntacticalAnalysis {
     private boolean hasReturnValue;
     private Function function;
     private Queue<String> variableConstruct;
+    private List<Token> currentExpression;
+    private ShuntingYardParser expressionParser;
 
     public SyntacticalAnalysis(List<Token> tokens) {
         this.tokens = tokens;
         this.iterator = tokens.listIterator();
         program = new Program();
+        currentExpression = new LinkedList<Token>();
+        expressionParser = new ShuntingYardParser();
 
         getNextToken();
         if(isBlock() && errorStack.isEmpty()) {
@@ -55,9 +64,9 @@ public class SyntacticalAnalysis {
             case 516 : return " 'Until' expected.";
             case 517 : return " 'then' expected.";
             case 518 : return " 'In' expected.";
-            case 519 : return " 'Function' expected.";
+            case 519 : return " 'Compiler.Function' expected.";
             case 520 : return " '(' expected.";
-            case 521 : return "Function already declared";
+            case 521 : return "Compiler.Function already declared";
             case 522 : return "Tried to declare a local variable with the name of an existing global variable.";
             case 523 : return "Tried to declare a local variable with the name of an existing function.";
             case 524 : return "Tried to declare a function with the name of an existing global variable.";
@@ -153,8 +162,8 @@ public class SyntacticalAnalysis {
             }
 
             if (variables.size() > 1) {
-                if(isAssign()){
-                    if(isExpList()){
+                if(isAssign()) {
+                    if(isExpList()) {
                         return true;
                     }
                 }else {
@@ -498,7 +507,7 @@ public class SyntacticalAnalysis {
 
     //explist ::= {exp `,´} exp
 
-    private boolean isExpList(){
+    private boolean isExpList() {
         if(isExp()){
             while(isComma()){
                 if (!isExp()) {
@@ -511,41 +520,53 @@ public class SyntacticalAnalysis {
         return false;
     }
 
-    /*exp ::=  nil | false | true | Number | String | `...´ | function |
+    /*exp ::=  nil | false | true | Number | String | function |
 		 prefixexp | tableconstructor | exp binop exp | unop exp
 */
 
 
-    private boolean isExp(){
-        if(isNil()){
+    private ASTNode isExp(){
+        if(isNil()) {
+            currentExpression.add(peekPreviousToken());
+
             if (isExpTail()) {
-                return true;
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
-        }else if(isFalse()){
+        } else if(isFalse()){
+            currentExpression.add(peekPreviousToken());
+
             if (isExpTail()) {
-                return true;
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
-        }else if(isTrue()){
+        } else if(isTrue()){
+            currentExpression.add(peekPreviousToken());
+
             if (isExpTail()) {
-                return true;
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
-        }else if(isNumber()){
+        } else if(isNumber()){
+            currentExpression.add(peekPreviousToken());
+
             if (isExpTail()) {
-                return true;
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
-        }else if(isString()){
+        } else if(isString()){
+            currentExpression.add(peekPreviousToken());
+
             if (isExpTail()) {
-                return true;
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
-        }else if(isTripleDot()){
-            if (isExpTail()) {
-                return true;
-            }
-        }else if(isFunction()){
-            if (isExpTail()) {
-                return true;
-            }
-        }else if(isPrefixExp()){
+        } else if(isPrefixExp()){
             if (isExpTail()) {
                 return true;
             }
@@ -553,8 +574,7 @@ public class SyntacticalAnalysis {
             if (isExpTail()) {
                 return true;
             }
-        }
-        else if(isUnop()){
+        } else if(isUnop()){
             if(isExp()){
                 if (isExpTail()) {
                     return true;

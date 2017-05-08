@@ -1,3 +1,5 @@
+package Compiler;
+
 import java.awt.BorderLayout;
 import java.awt.event.ActionEvent;
 import java.awt.event.ActionListener;
@@ -39,7 +41,7 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
     private LexicalAnalysis lexicalAnalysis;
 
     public Editor() {
-        super("Editor");
+        super("Compiler.Editor");
         textPane = new JEditorPane();
         add(new JScrollPane(textPane), BorderLayout.CENTER);
         textPane.getDocument().addDocumentListener(this);
@@ -176,7 +178,7 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
         file = null;
         textPane.setText("");
         changed = false;
-        setTitle("Editor");
+        setTitle("Compiler.Editor");
     }
 
     private void loadFile() {
@@ -192,7 +194,7 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
                 file = dialog.getSelectedFile();
                 textPane.setText(readFile(file));
                 changed = false;
-                setTitle("Editor - " + file.getName());
+                setTitle("Compiler.Editor - " + file.getName());
             }
         } catch (Exception e) {
             e.printStackTrace();
@@ -248,7 +250,7 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
         try (PrintWriter writer = new PrintWriter(file);){
             writer.write(textPane.getText());
             changed = false;
-            setTitle("Editor - " + file.getName());
+            setTitle("Compiler.Editor - " + file.getName());
         } catch (FileNotFoundException e) {
             e.printStackTrace();
         }

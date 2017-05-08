@@ -7,7 +7,7 @@ import org.junit.Test;
 public class LexicalAnalysisTest {
     @Test
     public void testLexicalAnalysis() {
-        LexicalAnalysis lexicalAnalysis = new LexicalAnalysis();
+        Compiler.LexicalAnalysis lexicalAnalysis = new Compiler.LexicalAnalysis();
         lexicalAnalysis.setCode(" a = {}\n" +
                 "       local x = 20\n" +
                 "       for i=1,10 do\n" +
