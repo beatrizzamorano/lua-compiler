@@ -20,6 +20,7 @@ public class SyntacticalAnalysis {
     private Queue<String> variableConstruct;
     private List<Token> currentExpression;
     private ShuntingYardParser expressionParser;
+    private int expressionDeepness = 0;
 
     public SyntacticalAnalysis(List<Token> tokens) {
         this.tokens = tokens;
@@ -201,7 +202,7 @@ public class SyntacticalAnalysis {
         }else if(isFunctionCall()){
             return true;
         }else if(isWhile()){
-            if(isExp()){
+            if(isExp() != null){
                 if(isDo()){
                     if(isBlock()){
                         if(isEnd()){
@@ -217,7 +218,7 @@ public class SyntacticalAnalysis {
         }else if(isRepeat()){
             if(isBlock()){
                 if(isUntil()){
-                    if(isExp()){
+                    if(isExp() != null){
                         return true;
                     }
                 } else{
@@ -225,11 +226,11 @@ public class SyntacticalAnalysis {
                 }
             }
         }else if(isIf()){
-            if(isExp()){
+            if(isExp() != null){
                 if(isThen()){
                     if(isBlock()){
                         while(isElseIf()){
-                            if(isExp()){
+                            if(isExp() != null){
                                 if(isThen()){
                                     if (!isBlock()) {
                                         return false;
@@ -260,10 +261,10 @@ public class SyntacticalAnalysis {
             int nameCount = isNameWithCount();
             if(nameCount == 1){
                 if(isAssign()){
-                    if(isExp()){
+                    if(isExp() != null){
                         if(isComma()){
-                            if(isExp()){
-                                if(isComma() && isExp()){
+                            if(isExp() != null){
+                                if(isComma() && isExp() != null){
                                     if(isDo()){
                                         if(isBlock()){
                                             if(isEnd()){
@@ -399,7 +400,7 @@ public class SyntacticalAnalysis {
         else if(isPrefixExp()) {
             variableConstruct = new ArrayDeque<>();
             if(isLeftBracket()) {
-                if(isExp()){
+                if(isExp() != null){
                     if(isRightBracket()){
                         if(isVarTail()) {
                             Variable variable = new Variable(variableConstruct);
@@ -427,7 +428,7 @@ public class SyntacticalAnalysis {
             }
         }
         else if(isLeftParenthesis()) {
-            if (isExp()) {
+            if (isExp() != null) {
                 if (isRightParenthesis()) {
                     if (isArgs()) {
                         if (isFunctionCallTail()) {
@@ -459,7 +460,7 @@ public class SyntacticalAnalysis {
 
     private boolean isVarTail() {
         if (isLeftBracket()) {
-            if (isExp()) {
+            if (isExp() != null) {
                 if (isRightBracket()) {
                     if (isVarTail()) {
                         return true;
@@ -508,9 +509,9 @@ public class SyntacticalAnalysis {
     //explist ::= {exp `,´} exp
 
     private boolean isExpList() {
-        if(isExp()){
+        if(isExp() != null){
             while(isComma()){
-                if (!isExp()) {
+                if (isExp() == null) {
                     return false;
                 }
             }
@@ -525,11 +526,11 @@ public class SyntacticalAnalysis {
 */
 
 
-    private ASTNode isExp(){
+    private ASTNode isExp() {
         if(isNil()) {
             currentExpression.add(peekPreviousToken());
 
-            if (isExpTail()) {
+            if (isExpTail() && expressionDeepness == 0) {
                 ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
                 currentExpression = new LinkedList<>();
                 return expression;
@@ -537,7 +538,7 @@ public class SyntacticalAnalysis {
         } else if(isFalse()){
             currentExpression.add(peekPreviousToken());
 
-            if (isExpTail()) {
+            if (isExpTail() && expressionDeepness == 0) {
                 ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
                 currentExpression = new LinkedList<>();
                 return expression;
@@ -545,7 +546,7 @@ public class SyntacticalAnalysis {
         } else if(isTrue()){
             currentExpression.add(peekPreviousToken());
 
-            if (isExpTail()) {
+            if (isExpTail() && expressionDeepness == 0) {
                 ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
                 currentExpression = new LinkedList<>();
                 return expression;
@@ -553,7 +554,7 @@ public class SyntacticalAnalysis {
         } else if(isNumber()){
             currentExpression.add(peekPreviousToken());
 
-            if (isExpTail()) {
+            if (isExpTail() && expressionDeepness == 0) {
                 ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
                 currentExpression = new LinkedList<>();
                 return expression;
@@ -561,56 +562,70 @@ public class SyntacticalAnalysis {
         } else if(isString()){
             currentExpression.add(peekPreviousToken());
 
-            if (isExpTail()) {
+            if (isExpTail() && expressionDeepness == 0) {
                 ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
                 currentExpression = new LinkedList<>();
                 return expression;
             }
         } else if(isPrefixExp()){
-            if (isExpTail()) {
-                return true;
+            if (isExpTail() && expressionDeepness == 0) {
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
         }else if(isTableConstructor()){
-            if (isExpTail()) {
-                return true;
+            if (isExpTail() && expressionDeepness == 0) {
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
         } else if(isUnop()){
-            if(isExp()){
-                if (isExpTail()) {
-                    return true;
+            if(isExp() != null){
+                if (isExpTail() && expressionDeepness == 0) {
+                    ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                    currentExpression = new LinkedList<>();
+                    return expression;
                 }
             }
         } else if (isVar() != null) {
             if (isArgs()) {
                 if (isFunctionCallTail()) {
-                    return true;
+                    ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                    currentExpression = new LinkedList<>();
+                    return expression;
                 }
             } else if (isColon()) {
                 if (isName()) {
                     getNextToken();
                     if (isFunctionCallTail()) {
-                        return true;
+                        ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                        currentExpression = new LinkedList<>();
+                        return expression;
                     }
                 } else {
                     printError(511);
                 }
             }
-            else if (isExpTail()) {
-                return true;
+            else if (isExpTail() && expressionDeepness == 0) {
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
         } else if (isFunctionCall()) {
-            if (isExpTail()) {
-                return true;
+            if (isExpTail() && expressionDeepness == 0) {
+                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
+                currentExpression = new LinkedList<>();
+                return expression;
             }
         }
 
-        return false;
+        return null;
 
     }
 
     private boolean isExpTail() {
         if (isBinop()) {
-            if (isExp()) {
+            if (isExp() != null) {
                 if (isExpTail()) {
                     return true;
                 }
@@ -646,8 +661,12 @@ public class SyntacticalAnalysis {
 
     private boolean isPrefixExp() {
         if(isLeftParenthesis()){
-            if(isExp()){
+            expressionDeepness++;
+            currentExpression.add(peekPreviousToken());
+            if(isExp() != null || expressionDeepness > 0){
                 if(isRightParenthesis()){
+                    expressionDeepness--;
+                    currentExpression.add(peekPreviousToken());
                     return true;
                 }else {
                     printError(507);
@@ -680,7 +699,7 @@ public class SyntacticalAnalysis {
                 printError(508);
             }
         } else if (isLeftParenthesis()) {
-            if (isExp()) {
+            if (isExp() != null) {
                 if (isRightParenthesis()) {
                     if (isArgs()) {
                         if (isFunctionCallTail()) {
@@ -902,10 +921,10 @@ public class SyntacticalAnalysis {
 
     private boolean isField(){
         if (isLeftBracket()){
-            if (isExp()){
+            if (isExp() != null){
                 if (isRightBracket()){
                     if (isAssign()){
-                        if(isExp()) {
+                        if(isExp() != null) {
                             return true;
                         }
 
@@ -919,13 +938,13 @@ public class SyntacticalAnalysis {
         } else if (isName()) {
             getNextToken();
             if (isAssign()) {
-                if (isExp()) {
+                if (isExp() != null) {
                     return true;
                 }
             } else {
                 printError(503);
             }
-        } else if (isExp()) {
+        } else if (isExp() != null) {
             return true;
         }
 
@@ -1126,108 +1145,119 @@ public class SyntacticalAnalysis {
 
     private boolean isHash() {
         if (currentToken.id != 108) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isNot() {
         if (currentToken.id != 213) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isOr() {
         if (currentToken.id != 214) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isAnd() {
         if (currentToken.id != 200) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isDifferent() {
         if (currentToken.id != 110) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isEqual() {
         if (currentToken.id != 109) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isGreaterOrEqualThan() {
         if (currentToken.id != 112) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isGreaterThan() {
         if (currentToken.id != 114) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isLessOrEqualThan() {
         if (currentToken.id != 111) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isLessThan() {
         if (currentToken.id != 113) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isDoubleDot() {
         if (currentToken.id != 126) return false;
-        getNextToken();
-        return true;
-    }
-
-    private boolean isTripleDot() {
-        if (currentToken.id != 127) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isPercent() {
         if (currentToken.id != 106) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isCircumflexAccent() {
         if (currentToken.id != 107) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isSlash() {
         if (currentToken.id != 105) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isAsterisk() {
         if (currentToken.id != 104) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isMinus() {
         if (currentToken.id != 103) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
     }
 
     private boolean isPlus() {
         if (currentToken.id != 102) return false;
+        currentExpression.add(currentToken);
         getNextToken();
         return true;
 
