@@ -83,6 +83,7 @@ public class ShuntingYardParser {
                 while (!operatorStack.isEmpty()){
                         addNode(operandStack, operatorStack.pop());
                     }
+                if (operandStack.isEmpty()) return null;
                 return operandStack.pop();
             }
 }
