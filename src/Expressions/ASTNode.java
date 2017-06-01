@@ -1,4 +1,5 @@
 package Expressions;
+import Statements.Statement;
 
 /**
  * Created by beatriz zamorano on 21/03/17.

@@ -2,6 +2,7 @@ package Compiler;
 
 import Expressions.ASTNode;
 import Expressions.ShuntingYardParser;
+import Statements.AssignStatement;
 
 import javax.swing.*;
 import java.util.*;
@@ -142,19 +143,13 @@ public class SyntacticalAnalysis {
     }
 
     private boolean isFieldSep(){
-        if (isComma() ||
-                isSemicolon()) return true;
-        return false;
+        return isComma() || isSemicolon();
     }
 
     //block ::= chunk
 
-    private boolean isBlock(){
-        if(isChunk()){
-            return true;
-        }
-
-        return false;
+    private boolean isBlock() {
+        return isChunk();
     }
 
     //chunk ::= {stat [`;´]} [laststat [`;´]]
@@ -176,12 +171,9 @@ public class SyntacticalAnalysis {
     /*stat ::=
          varlist `=´ explist |
 		 functioncall |
-		 do block end |
 		 while exp do block end |
-		 repeat block until exp |
 		 if exp then block {elseif exp then block} [else block] end |
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
-		 for namelist in explist do block end |
 		 function funcname funcbody |
 		 local namelist [`=´ explist] */
 
@@ -189,7 +181,7 @@ public class SyntacticalAnalysis {
     private boolean isStat(){
         List<Variable> variables = isVarList();
 
-        if(variables != null && variables.size() > 0){
+        if (variables != null && variables.size() > 0) {
             for (Variable variable : variables) {
                 try {
                     program.addGlobalVariable(variable);
@@ -203,6 +195,13 @@ public class SyntacticalAnalysis {
                 if (isAssign()) {
                     List<List<Token>> expressions = isExpList();
                     if (expressions != null) {
+                        if (variables.size() != expressions.size()) return false;
+
+                        for (int i = 0; i < variables.size(); i++) {
+                            AssignStatement assign = new AssignStatement(variables.get(i), expressions.get(i));
+                            program.addStatement(assign);
+                        }
+
                         return true;
                     }
                 } else {
@@ -225,52 +224,36 @@ public class SyntacticalAnalysis {
                 } else if (isAssign()) {
                     List<List<Token>> expressions = isExpList();
                     if (expressions != null) {
+                        AssignStatement assign = new AssignStatement(variables.get(0), expressions.get(0));
+                        program.addStatement(assign);
                         return true;
                     }
                 }
                 return true;
             }
-        } else if(isDo()){
-            if(isBlock()){
-                if(isEnd()){
-                    return true;
-                } else {
-                    printError(513);
-                }
-            }
-        }else if(isFunctionCall()){
+        } else if (isFunctionCall()) {
             return true;
-        }else if(isWhile()){
-            if(isExp() != null){
-                if(isDo()){
-                    if(isBlock()){
-                        if(isEnd()){
+        } else if (isWhile()) {
+            if (isExp() != null) {
+                if (isDo()) {
+                    if (isBlock()) {
+                        if (isEnd()) {
                             return true;
-                        } else{
+                        } else {
                             printError(513);
                         }
                     }
-                } else{
+                } else {
                     printError(515);
                 }
             }
-        }else if(isRepeat()){
-            if(isBlock()){
-                if(isUntil()){
-                    if(isExp() != null){
-                        return true;
-                    }
-                } else{
-                    printError(516);
-                }
-            }
-        }else if(isIf()){
-            if(isExp() != null){
-                if(isThen()){
-                    if(isBlock()){
-                        while(isElseIf()){
-                            if(isExp() != null){
-                                if(isThen()){
+        } else if (isIf()) {
+            if (isExp() != null) {
+                if (isThen()) {
+                    if (isBlock()) {
+                        while (isElseIf()) {
+                            if (isExp() != null) {
+                                if (isThen()) {
                                     if (!isBlock()) {
                                         return false;
                                     }
@@ -280,14 +263,14 @@ public class SyntacticalAnalysis {
                             }
 
                         }
-                        if(isElse()){
-                            if(!isBlock()){
+                        if (isElse()) {
+                            if (!isBlock()) {
                                 return false;
                             }
                         }
-                       if(isEnd()){
+                       if (isEnd()) {
                            return true;
-                       } else{
+                       } else {
                            printError(513);
                            return false;
                        }
@@ -298,15 +281,15 @@ public class SyntacticalAnalysis {
             }
         } else if (isFor()) {
             int nameCount = isNameWithCount();
-            if(nameCount == 1){
-                if(isAssign()){
-                    if(isExp() != null){
-                        if(isComma()){
-                            if(isExp() != null){
-                                if(isComma() && isExp() != null){
-                                    if(isDo()){
-                                        if(isBlock()){
-                                            if(isEnd()){
+            if (nameCount == 1) {
+                if (isAssign()) {
+                    if (isExp() != null) {
+                        if (isComma()) {
+                            if (isExp() != null) {
+                                if (isComma() && isExp() != null) {
+                                    if (isDo()) {
+                                        if (isBlock()) {
+                                            if (isEnd()) {
                                                 return true;
                                             } else {
                                                 printError(513);
@@ -315,9 +298,9 @@ public class SyntacticalAnalysis {
                                     } else {
                                         printError(515);
                                     }
-                                }else if(isDo()){
-                                    if(isBlock()){
-                                        if(isEnd()){
+                                } else if(isDo()) {
+                                    if (isBlock()) {
+                                        if (isEnd()) {
                                             return true;
                                         } else {
                                             printError(513);
@@ -340,20 +323,25 @@ public class SyntacticalAnalysis {
                 return false;
             }
 
-        } else if(isFunctionKeyword()) {
+        } else if (isFunctionKeyword()) {
             if (isFuncName()) {
                 if (isFuncBody()) {
                     return true;
                 }
             }
-        } else if(isLocal()) {
+        } else if (isLocal()) {
             List<String> nameList = isNameList();
 
             if (nameList != null) {
+                variables = new ArrayList<Variable>();
+
                 for (String name : nameList) {
                     Variable variable = new Variable(name);
+                    variables.add(variable);
+
                     try {
                         program.addLocalVariable(function.getName(), variable);
+
                     } catch (SemanthicException ex) {
                         printError(ex.getErrorNumber());
                         return false;
@@ -362,10 +350,13 @@ public class SyntacticalAnalysis {
 
                 if (isAssign()) {
                     List<List<Token>> expressions = isExpList();
+                    if (expressions == null || expressions.size() != variables.size()) return false;
 
-                    if (expressions == null) {
-                        return false;
+                    for (int i = 0; i < expressions.size(); i++) {
+                        AssignStatement statement = new AssignStatement(variables.get(i), expressions.get(i));
+                        program.addStatement(statement);
                     }
+
                 }
 
                 return true;
@@ -418,7 +409,6 @@ public class SyntacticalAnalysis {
     //funcname ::= Name {`.´ Name} [`:´ Name]
     private boolean isFuncName(){
         if(isName()){
-            Token token = peekPreviousToken();
             getNextToken();
             return true;
         }
@@ -992,8 +982,7 @@ public class SyntacticalAnalysis {
 
 
     private boolean isName() {
-        if (currentToken.id != 100) return false;
-        return true;
+        return currentToken.id == 100;
     }
 
     private boolean isDot() {
@@ -1072,12 +1061,6 @@ public class SyntacticalAnalysis {
 
     private boolean isLocal() {
         if (currentToken.id != 211) return false;
-        getNextToken();
-        return true;
-    }
-
-    private boolean isIn() {
-        if (currentToken.id != 210) return false;
         getNextToken();
         return true;
     }
@@ -1285,7 +1268,7 @@ public class SyntacticalAnalysis {
 
     }
 
-    public void getNextToken() {
+    private void getNextToken() {
         try {
             currentToken = iterator.next();
         }
@@ -1294,7 +1277,7 @@ public class SyntacticalAnalysis {
         }
     }
 
-    public Token peekPreviousToken() {
+    private Token peekPreviousToken() {
         iterator.previous();
         Token previous = iterator.previous();
         iterator.next();

@@ -71,4 +71,8 @@ public class Variable {
         return this.properties;
     }
 
+    public Token getToken() {
+        return new Token(this.name, 200, 0);
+    }
+
 }
