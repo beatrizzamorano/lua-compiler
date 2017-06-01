@@ -1,5 +1,8 @@
 package Compiler;
 
+import Statements.Statement;
+
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 
@@ -11,11 +14,13 @@ public class Function {
     private HashMap<Integer, Variable> localVariables;
     private boolean hasReturnValue;
     private String name;
+    private List<Statement> statements;
 
     public Function() {
         this.parameters = new HashMap<>();
         this.localVariables = new HashMap<>();
         this.hasReturnValue = false;
+        this.statements = new ArrayList<>();
     }
 
     public void setHasReturnValue(boolean hasReturnValue) {
@@ -38,5 +43,9 @@ public class Function {
         for (Parameter param : params) {
             this.parameters.put(param.hashCode(), param);
         }
+    }
+
+    public void setStatements(List<Statement> statements) {
+        this.statements = statements;
     }
 }

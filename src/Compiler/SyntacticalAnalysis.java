@@ -2,9 +2,10 @@ package Compiler;
 
 import Expressions.ASTNode;
 import Expressions.ShuntingYardParser;
-import Statements.AssignStatement;
+import Statements.*;
 
 import javax.swing.*;
+import java.beans.Expression;
 import java.util.*;
 
 /**
@@ -28,7 +29,12 @@ public class SyntacticalAnalysis {
         expressionParser = new ShuntingYardParser();
 
         getNextToken();
-        if(isBlock() && errorStack.isEmpty()) {
+        List<Statement> block = isBlock();
+        if(block != null && errorStack.isEmpty()) {
+            for (Statement statement : block) {
+                this.program.addStatement(statement);
+            }
+
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
         } else {
             JOptionPane.showMessageDialog(null, errorStack);
@@ -148,23 +154,33 @@ public class SyntacticalAnalysis {
 
     //block ::= chunk
 
-    private boolean isBlock() {
+    private List<Statement> isBlock() {
         return isChunk();
     }
 
     //chunk ::= {stat [`;´]} [laststat [`;´]]
 
-    private boolean isChunk(){
+    private List<Statement> isChunk(){
+        List<Statement> statements = new ArrayList<>();
+
         try {
-            while(isStat()) {
+
+            Statement statement = isStat();
+            while (statement != null) {
+                statements.add(statement);
+                isSemicolon();
+
+                statement = isStat();
+            }
+
+            if (isLastStat()) {
                 isSemicolon();
             }
-            if(isLastStat()) {
-                isSemicolon();
-            }
-            return true;
+
+            return statements.size() > 0 ? statements : null;
+
         } catch (NullPointerException ex) {
-            return true;
+            return statements.size() > 0 ? statements : null;
         }
     }
 
@@ -178,7 +194,7 @@ public class SyntacticalAnalysis {
 		 local namelist [`=´ explist] */
 
 
-    private boolean isStat(){
+    private Statement isStat(){
         List<Variable> variables = isVarList();
 
         if (variables != null && variables.size() > 0) {
@@ -195,138 +211,152 @@ public class SyntacticalAnalysis {
                 if (isAssign()) {
                     List<List<Token>> expressions = isExpList();
                     if (expressions != null) {
-                        if (variables.size() != expressions.size()) return false;
+                        if (variables.size() != expressions.size()) return null;
 
-                        for (int i = 0; i < variables.size(); i++) {
-                            AssignStatement assign = new AssignStatement(variables.get(i), expressions.get(i));
-                            program.addStatement(assign);
-                        }
-
-                        return true;
+                        return new GroupAssignStatement(variables, expressions);
                     }
                 } else {
                     printError(503);
                 }
             } else if (variables.size() == 1) {
-                if (isArgs()) {
-                    if (isFunctionCallTail()) {
-                        return true;
-                    }
-                } else if (isColon()) {
-                    if (isName()) {
-                        getNextToken();
-                        if (isArgs()) {
-                            if (isFunctionCallTail()) {
-                                return true;
-                            }
-                        }
-                    }
-                } else if (isAssign()) {
+//                if (isArgs()) {
+//                    if (isFunctionCallTail()) {
+//                        return true;
+//                    }
+//                }
+//                else if (isColon()) {
+//                    if (isName()) {
+//                        getNextToken();
+//                        if (isArgs()) {
+//                            if (isFunctionCallTail()) {
+//                                return true;
+//                            }
+//                        }
+//                    }
+//                }
+                if (isAssign()) {
                     List<List<Token>> expressions = isExpList();
                     if (expressions != null) {
-                        AssignStatement assign = new AssignStatement(variables.get(0), expressions.get(0));
-                        program.addStatement(assign);
-                        return true;
+                        return new AssignStatement(variables.get(0), expressions.get(0));
                     }
                 }
-                return true;
+
+                return new GenericStatement();
             }
         } else if (isFunctionCall()) {
-            return true;
-        } else if (isWhile()) {
-            if (isExp() != null) {
-                if (isDo()) {
-                    if (isBlock()) {
-                        if (isEnd()) {
-                            return true;
-                        } else {
-                            printError(513);
-                        }
-                    }
-                } else {
-                    printError(515);
-                }
-            }
-        } else if (isIf()) {
-            if (isExp() != null) {
+            return new GenericStatement();
+//            return true;
+        }
+//        else if (isWhile()) {
+//            if (isExp() != null) {
+//                if (isDo()) {
+//                    if (isBlock()) {
+//                        if (isEnd()) {
+//                            return true;
+//                        } else {
+//                            printError(513);
+//                        }
+//                    }
+//                } else {
+//                    printError(515);
+//                }
+//            }
+//        }
+        else if (isIf()) {
+            List<Token> expression = isExp();
+            if (expression != null) {
+                IfStatement ifStatement = new IfStatement(expression);
+
                 if (isThen()) {
-                    if (isBlock()) {
+                    List<Statement> firstConditionalStatements = isBlock();
+                    if (firstConditionalStatements != null) {
+                        ifStatement.setStatements(firstConditionalStatements);
+
                         while (isElseIf()) {
-                            if (isExp() != null) {
+                            List<Token> elseIfExpression = isExp();
+
+                            if (elseIfExpression != null) {
                                 if (isThen()) {
-                                    if (!isBlock()) {
-                                        return false;
+                                    List<Statement> block = isBlock();
+                                    if (block != null) {
+                                        ifStatement.addElseIfStatement(new ElseIfStatement(elseIfExpression, block));
+                                    } else {
+                                        return null;
                                     }
                                 } else {
                                     printError(517);
                                 }
                             }
-
                         }
                         if (isElse()) {
-                            if (!isBlock()) {
-                                return false;
+                            List<Statement> block = isBlock();
+                            if (block != null) {
+                                ifStatement.setElseStatements(block);
+                            } else {
+                                return null;
                             }
                         }
                        if (isEnd()) {
-                           return true;
+                           return ifStatement;
                        } else {
                            printError(513);
-                           return false;
+                           return null;
                        }
                     }
                 } else {
                     printError(517);
                 }
             }
-        } else if (isFor()) {
-            int nameCount = isNameWithCount();
-            if (nameCount == 1) {
-                if (isAssign()) {
-                    if (isExp() != null) {
-                        if (isComma()) {
-                            if (isExp() != null) {
-                                if (isComma() && isExp() != null) {
-                                    if (isDo()) {
-                                        if (isBlock()) {
-                                            if (isEnd()) {
-                                                return true;
-                                            } else {
-                                                printError(513);
-                                            }
-                                        }
-                                    } else {
-                                        printError(515);
-                                    }
-                                } else if(isDo()) {
-                                    if (isBlock()) {
-                                        if (isEnd()) {
-                                            return true;
-                                        } else {
-                                            printError(513);
-                                        }
-                                    }
-                                } else {
-                                    printError(515);
-                                }
-                            }
-                        } else {
-                            printError(506);
-                            return false;
-                        }
-                    }
-                } else {
-                    printError(518);
-                }
-            } else {
-                printError(511);
-                return false;
-            }
-
-        } else if (isFunctionKeyword()) {
+        }
+//        else if (isFor()) {
+//            int nameCount = isNameWithCount();
+//            if (nameCount == 1) {
+//                if (isAssign()) {
+//                    if (isExp() != null) {
+//                        if (isComma()) {
+//                            if (isExp() != null) {
+//                                if (isComma() && isExp() != null) {
+//                                    if (isDo()) {
+//                                        if (isBlock()) {
+//                                            if (isEnd()) {
+//                                                return true;
+//                                            } else {
+//                                                printError(513);
+//                                            }
+//                                        }
+//                                    } else {
+//                                        printError(515);
+//                                    }
+//                                } else if(isDo()) {
+//                                    if (isBlock()) {
+//                                        if (isEnd()) {
+//                                            return true;
+//                                        } else {
+//                                            printError(513);
+//                                        }
+//                                    }
+//                                } else {
+//                                    printError(515);
+//                                }
+//                            }
+//                        } else {
+//                            printError(506);
+//                            return null;
+//                        }
+//                    }
+//                } else {
+//                    printError(518);
+//                }
+//            } else {
+//                printError(511);
+//                return null;
+//            }
+//
+//        }
+        else if (isFunctionKeyword()) {
             if (isFuncName()) {
                 if (isFuncBody()) {
-                    return true;
+                    return new GenericStatement();
                 }
             }
         } else if (isLocal()) {
@@ -344,28 +374,24 @@ public class SyntacticalAnalysis {
 
                     } catch (SemanthicException ex) {
                         printError(ex.getErrorNumber());
-                        return false;
+                        return null;
                     }
                 }
 
                 if (isAssign()) {
                     List<List<Token>> expressions = isExpList();
-                    if (expressions == null || expressions.size() != variables.size()) return false;
+                    if (expressions == null || expressions.size() != variables.size()) return null;
 
-                    for (int i = 0; i < expressions.size(); i++) {
-                        AssignStatement statement = new AssignStatement(variables.get(i), expressions.get(i));
-                        program.addStatement(statement);
-                    }
-
+                    return new GroupAssignStatement(variables, expressions);
                 }
 
-                return true;
+                return new GenericStatement();
             } else {
                 printError(519);
             }
         }
 
-        return false;
+        return null;
     }
 
     //laststat ::= return [explist] | break
@@ -385,26 +411,6 @@ public class SyntacticalAnalysis {
 
         return false;
     }
-
-    private int isNameWithCount() {
-        int count = 0;
-        if (isName()) {
-            getNextToken();
-            count++;
-            while(isComma()) {
-                count++;
-                if (!isName()) {
-                    printError(511);
-                    return -1;
-                }
-                getNextToken();
-            }
-        }
-
-        return count;
-    }
-
-
 
     //funcname ::= Name {`.´ Name} [`:´ Name]
     private boolean isFuncName(){
@@ -440,7 +446,7 @@ public class SyntacticalAnalysis {
                             variableConstruct = null;
                             return variable;
                         }
-                    }else {
+                    } else {
                         printError(504);
                     }
                 }
@@ -822,45 +828,57 @@ public class SyntacticalAnalysis {
 
     //funcbody ::= `(´ [parlist] `)´ block end
 
-    private boolean isFuncBody(){
+    private boolean isFuncBody() {
         function = new Function();
         Token functionName = peekPreviousToken();
         function.setName(functionName.lexeme);
+
         try {
             program.addFunction(function);
+
         } catch (SemanthicException ex) {
             printError(ex.getErrorNumber());
             return false;
         }
 
-        if(isLeftParenthesis() != null){
+        if (isLeftParenthesis() != null) {
             List<Parameter> parameters = isParList();
-            if(parameters != null){
+
+            if (parameters != null) {
                 function.addParameters(parameters);
                 program.updateFunction(function);
-                if(isRightParenthesis() != null) {
-                    if(isBlock()){
+
+                if (isRightParenthesis() != null) {
+                    List<Statement> statements = isBlock();
+
+                    if (statements != null) {
                         function.setHasReturnValue(this.hasReturnValue);
+                        function.setStatements(statements);
                         program.updateFunction(function);
                         hasReturnValue = false;
 
-                        if(isEnd()){
+                        if (isEnd()) {
                             return true;
                         }
-                    } else{
+
+                    } else {
                         printError(513);
                     }
                 }
-            } else if(isRightParenthesis() != null){
-                if(isBlock()){
+            } else if (isRightParenthesis() != null) {
+                List<Statement> statements = isBlock();
+
+                if (statements != null) {
                     function.setHasReturnValue(this.hasReturnValue);
+                    function.setStatements(statements);
                     program.updateFunction(function);
                     hasReturnValue = false;
 
-                    if(isEnd()){
+                    if (isEnd()) {
                         function = null;
                         return true;
-                    }else{
+
+                    } else {
                         printError(513);
                     }
                 }
