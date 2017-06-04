@@ -5,9 +5,6 @@ import java.util.List;
 import Compiler.Variable;
 import Compiler.Token;
 
-/**
- * Created by nsl-malvarado on 6/1/17.
- */
 public class GroupAssignStatement implements Statement {
     List<AssignStatement> assignStatements;
 

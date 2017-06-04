@@ -1,18 +1,10 @@
 package Compiler;
 
-import Expressions.ASTNode;
-import Expressions.ShuntingYardParser;
 import Statements.*;
-
 import javax.swing.*;
-import java.beans.Expression;
 import java.util.*;
 
-/**
- * Created by beatrizzamorano on 1/1/17.
- */
-public class SyntacticalAnalysis {
-    private List<Token> tokens;
+class SyntacticalAnalysis {
     private ListIterator<Token> iterator;
     private Token currentToken;
     private String errorStack = "";
@@ -20,13 +12,10 @@ public class SyntacticalAnalysis {
     private boolean hasReturnValue;
     private Function function;
     private Queue<String> variableConstruct;
-    private ShuntingYardParser expressionParser;
 
-    public SyntacticalAnalysis(List<Token> tokens) {
-        this.tokens = tokens;
+    SyntacticalAnalysis(List<Token> tokens) {
         this.iterator = tokens.listIterator();
         program = new Program();
-        expressionParser = new ShuntingYardParser();
 
         getNextToken();
         List<Statement> block = isBlock();
@@ -308,51 +297,72 @@ public class SyntacticalAnalysis {
                 }
             }
         }
-//        else if (isFor()) {
-//            int nameCount = isNameWithCount();
-//            if (nameCount == 1) {
-//                if (isAssign()) {
-//                    if (isExp() != null) {
-//                        if (isComma()) {
-//                            if (isExp() != null) {
-//                                if (isComma() && isExp() != null) {
-//                                    if (isDo()) {
-//                                        if (isBlock()) {
-//                                            if (isEnd()) {
-//                                                return true;
-//                                            } else {
-//                                                printError(513);
-//                                            }
-//                                        }
-//                                    } else {
-//                                        printError(515);
-//                                    }
-//                                } else if(isDo()) {
-//                                    if (isBlock()) {
-//                                        if (isEnd()) {
-//                                            return true;
-//                                        } else {
-//                                            printError(513);
-//                                        }
-//                                    }
-//                                } else {
-//                                    printError(515);
-//                                }
-//                            }
-//                        } else {
-//                            printError(506);
-//                            return null;
-//                        }
-//                    }
-//                } else {
-//                    printError(518);
-//                }
-//            } else {
-//                printError(511);
-//                return null;
-//            }
-//
-//        }
+        else if (isFor()) {
+            List<String> names = isNameList();
+
+            if (names != null && names.size() == 1) {
+                if (isAssign()) {
+                    List<Token> assignExpression = isExp();
+
+                    if (assignExpression != null) {
+                        if (isComma()) {
+                            List<Token> conditionExpression = isExp();
+
+                            if (conditionExpression != null) {
+                                ForStatement forStatement = new ForStatement(assignExpression, conditionExpression);
+
+                                if (isComma()) {
+                                    List<Token> cycleExpression = isExp();
+
+                                    if (cycleExpression != null) {
+                                        forStatement.setCycleExpression(cycleExpression);
+
+                                        if (isDo()) {
+                                            List<Statement> statements = isBlock();
+
+                                            if (statements != null) {
+                                                forStatement.setCycleStatements(statements);
+
+                                                if (isEnd()) {
+                                                    return forStatement;
+                                                } else {
+                                                    printError(513);
+                                                }
+                                            }
+                                        } else {
+                                            printError(515);
+                                        }
+                                    }
+                                } else if(isDo()) {
+                                    List<Statement> statements = isBlock();
+
+                                    if (statements != null) {
+                                        forStatement.setCycleStatements(statements);
+
+                                        if (isEnd()) {
+                                            return forStatement;
+                                        } else {
+                                            printError(513);
+                                        }
+                                    }
+                                } else {
+                                    printError(515);
+                                }
+                            }
+                        } else {
+                            printError(506);
+                            return null;
+                        }
+                    }
+                } else {
+                    printError(518);
+                }
+            } else {
+                printError(511);
+                return null;
+            }
+
+        }
         else if (isFunctionKeyword()) {
             if (isFuncName()) {
                 if (isFuncBody()) {
@@ -911,19 +921,22 @@ public class SyntacticalAnalysis {
     //namelist ::= Name {`,´ Name}
 
     private List<String> isNameList(){
-        ArrayList nameList = new ArrayList();
-        if(isName()){
-            nameList.add(currentToken.lexeme);
+        List<String> nameList = new ArrayList<>();
 
+        if (isName()) {
+            nameList.add(currentToken.lexeme);
             getNextToken();
+
             while (isComma()) {
                 if (!isName()) {
                     printError(511);
                     return null;
                 }
+
                 nameList.add(currentToken.lexeme);
                 getNextToken();
             }
+
             return nameList;
         }
 

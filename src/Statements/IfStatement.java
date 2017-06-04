@@ -1,15 +1,12 @@
 package Statements;
 
+import Compiler.Token;
 import Expressions.ASTNode;
+import Expressions.ShuntingYardParser;
 
 import java.util.ArrayList;
 import java.util.List;
-import Compiler.Token;
-import Expressions.ShuntingYardParser;
 
-/**
- * Created by nsl-malvarado on 6/1/17.
- */
 public class IfStatement implements Statement {
     private ASTNode firstConditional;
     private List<Statement> statements;
