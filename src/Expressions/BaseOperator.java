@@ -1,9 +1,8 @@
 package Expressions;
 
-/**
- * Created by beatriz zamorano on 21/03/17.
- */
-public class BaseOperator implements Operator {
+import Compiler.TypeEnum;
+
+public class BaseOperator implements Operator, Node {
     private final String symbol;
     private final boolean isRightAssociative;
     private final int precedence;
@@ -45,4 +44,8 @@ public class BaseOperator implements Operator {
         return symbol;
     }
 
+    @Override
+    public TypeEnum getType() {
+        return TypeEnum.OPERATOR;
+    }
 }
