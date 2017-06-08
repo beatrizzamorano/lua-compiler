@@ -1,30 +1,46 @@
 package Statements;
 
-import Compiler.Token;
+import Compiler.*;
+import Expressions.ASTEvaluator;
 import Expressions.ASTNode;
+import Expressions.Node;
 import Expressions.ShuntingYardParser;
 
 import java.util.List;
 
 public class ForStatement implements Statement {
-    ASTNode assignExpression;
-    ASTNode condition;
-    ASTNode cycleExpression;
-    List<Statement> cycleStatements;
-    ShuntingYardParser parser;
 
-    public ForStatement(List<Token> assignExpression, List<Token> conditionExpression) {
+    private AssignStatement assignStatement;
+    private ASTNode condition;
+    private ASTNode cycleExpression;
+    private List<Statement> cycleStatements;
+    private ShuntingYardParser parser;
+    private ASTEvaluator evaluator = new ASTEvaluator();
+
+    public ForStatement(AssignStatement assignStatement, List<Node> conditionExpression) {
         this.parser = new ShuntingYardParser();
 
-        this.assignExpression = parser.convertInfixNotationToAST(assignExpression);
+        this.assignStatement = assignStatement;
         this.condition = parser.convertInfixNotationToAST(conditionExpression);
     }
 
-    public void setCycleExpression(List<Token> cycleExpression) {
+    public void setCycleExpression(List<Node> cycleExpression) {
         this.cycleExpression = parser.convertInfixNotationToAST(cycleExpression);
     }
 
     public void setCycleStatements(List<Statement> statements) {
         this.cycleStatements = statements;
+    }
+
+    @Override
+    public void evaluate() throws SemanthicException {
+        TypeEnum conditionType = evaluator.evaluateAST(condition);
+        if (conditionType != TypeEnum.BOOLEAN) throw new SemanthicException(530);
+
+        assignStatement.evaluate();
+
+        for (Statement cycleStatement : cycleStatements) {
+            cycleStatement.evaluate();
+        }
     }
 }

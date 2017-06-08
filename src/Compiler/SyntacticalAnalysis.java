@@ -1,5 +1,8 @@
 package Compiler;
 
+import Expressions.Node;
+import Expressions.OperatorFactory;
+import Expressions.ValueNode;
 import Statements.*;
 import javax.swing.*;
 import java.util.*;
@@ -19,11 +22,16 @@ class SyntacticalAnalysis {
 
         getNextToken();
         List<Statement> block = isBlock();
-        if(block != null && errorStack.isEmpty()) {
-            for (Statement statement : block) {
-                this.program.addStatement(statement);
-            }
 
+        for (Statement statement : block) {
+            try {
+                statement.evaluate();
+            } catch (SemanthicException ex) {
+                printError(ex.getErrorNumber());
+            }
+        }
+
+        if (block != null && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
         } else {
             JOptionPane.showMessageDialog(null, errorStack);
@@ -65,6 +73,11 @@ class SyntacticalAnalysis {
             case 523 : return "Tried to declare a local variable with the name of an existing function.";
             case 524 : return "Tried to declare a function with the name of an existing global variable.";
             case 525 : return "Tried to declare a global variable with the name of an existing function.";
+            case 526 : return "Tried to evaluate a non-supported value.";
+            case 527 : return "Nothing to compare in expression";
+            case 528 : return "Incompatible types";
+            case 529 : return "If statement expects a boolean expression";
+            case 530 : return "For statement expects a boolean expression";
 
             default : return "";
         }
@@ -176,7 +189,6 @@ class SyntacticalAnalysis {
     /*stat ::=
          varlist `=´ explist |
 		 functioncall |
-		 while exp do block end |
 		 if exp then block {elseif exp then block} [else block] end |
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
 		 function funcname funcbody |
@@ -198,7 +210,7 @@ class SyntacticalAnalysis {
 
             if (variables.size() > 1) {
                 if (isAssign()) {
-                    List<List<Token>> expressions = isExpList();
+                    List<List<Node>> expressions = isExpList();
                     if (expressions != null) {
                         if (variables.size() != expressions.size()) return null;
 
@@ -224,7 +236,7 @@ class SyntacticalAnalysis {
 //                    }
 //                }
                 if (isAssign()) {
-                    List<List<Token>> expressions = isExpList();
+                    List<List<Node>> expressions = isExpList();
                     if (expressions != null) {
                         return new AssignStatement(variables.get(0), expressions.get(0));
                     }
@@ -234,25 +246,9 @@ class SyntacticalAnalysis {
             }
         } else if (isFunctionCall()) {
             return new GenericStatement();
-//            return true;
         }
-//        else if (isWhile()) {
-//            if (isExp() != null) {
-//                if (isDo()) {
-//                    if (isBlock()) {
-//                        if (isEnd()) {
-//                            return true;
-//                        } else {
-//                            printError(513);
-//                        }
-//                    }
-//                } else {
-//                    printError(515);
-//                }
-//            }
-//        }
         else if (isIf()) {
-            List<Token> expression = isExp();
+            List<Node> expression = isExp();
             if (expression != null) {
                 IfStatement ifStatement = new IfStatement(expression);
 
@@ -262,7 +258,7 @@ class SyntacticalAnalysis {
                         ifStatement.setStatements(firstConditionalStatements);
 
                         while (isElseIf()) {
-                            List<Token> elseIfExpression = isExp();
+                            List<Node> elseIfExpression = isExp();
 
                             if (elseIfExpression != null) {
                                 if (isThen()) {
@@ -302,17 +298,18 @@ class SyntacticalAnalysis {
 
             if (names != null && names.size() == 1) {
                 if (isAssign()) {
-                    List<Token> assignExpression = isExp();
+                    List<Node> assignExpression = isExp();
 
                     if (assignExpression != null) {
                         if (isComma()) {
-                            List<Token> conditionExpression = isExp();
+                            List<Node> conditionExpression = isExp();
 
                             if (conditionExpression != null) {
-                                ForStatement forStatement = new ForStatement(assignExpression, conditionExpression);
+                                AssignStatement assignStatement = new AssignStatement(new Variable(names.get(0)), assignExpression);
+                                ForStatement forStatement = new ForStatement(assignStatement, conditionExpression);
 
                                 if (isComma()) {
-                                    List<Token> cycleExpression = isExp();
+                                    List<Node> cycleExpression = isExp();
 
                                     if (cycleExpression != null) {
                                         forStatement.setCycleExpression(cycleExpression);
@@ -331,18 +328,6 @@ class SyntacticalAnalysis {
                                             }
                                         } else {
                                             printError(515);
-                                        }
-                                    }
-                                } else if(isDo()) {
-                                    List<Statement> statements = isBlock();
-
-                                    if (statements != null) {
-                                        forStatement.setCycleStatements(statements);
-
-                                        if (isEnd()) {
-                                            return forStatement;
-                                        } else {
-                                            printError(513);
                                         }
                                     }
                                 } else {
@@ -389,7 +374,7 @@ class SyntacticalAnalysis {
                 }
 
                 if (isAssign()) {
-                    List<List<Token>> expressions = isExpList();
+                    List<List<Node>> expressions = isExpList();
                     if (expressions == null || expressions.size() != variables.size()) return null;
 
                     return new GroupAssignStatement(variables, expressions);
@@ -408,7 +393,7 @@ class SyntacticalAnalysis {
 
     private boolean isLastStat() {
         if (isReturn()) {
-            List<List<Token>> expressions = isExpList();
+            List<List<Node>> expressions = isExpList();
             if (expressions != null) {
                 this.hasReturnValue = true;
                 return true;
@@ -557,9 +542,9 @@ class SyntacticalAnalysis {
 
     //explist ::= {exp `,´} exp
 
-    private List<List<Token>> isExpList() {
-        List<List<Token>> expressions = new ArrayList<>();
-        List<Token> expression = isExp();
+    private List<List<Node>> isExpList() {
+        List<List<Node>> expressions = new ArrayList<>();
+        List<Node> expression = isExp();
 
         if (expression.size() > 0){
             expressions.add(expression);
@@ -582,61 +567,56 @@ class SyntacticalAnalysis {
 		 prefixexp | tableconstructor | exp binop exp | unop exp
 */
 
-    private List<Token> isExp() {
+    private List<Node> isExp() {
         return isExp(new ArrayList<>());
     }
 
-
-    private List<Token> isExp(List<Token> currentExpression) {
+    private List<Node> isExp(List<Node> currentExpression) {
         Token token;
 
         token= isNil();
         if (token != null) {
-            currentExpression.add(token);
+            currentExpression.add(new ValueNode(token));
             return isExpTail(currentExpression);
         }
 
         token = isFalse();
         if (token != null) {
-            currentExpression.add(token);
+            currentExpression.add(new ValueNode(token));
             return isExpTail(currentExpression);
         }
 
         token = isTrue();
         if (token != null) {
-            currentExpression.add(token);
+            currentExpression.add(new ValueNode(token));
             return isExpTail(currentExpression);
         }
 
         token = isNumber();
         if (token != null) {
-            currentExpression.add(token);
+            currentExpression.add(new ValueNode(token));
             return isExpTail(currentExpression);
         }
 
         token = isString();
         if (token != null) {
-            currentExpression.add(token);
+            currentExpression.add(new ValueNode(token));
             return isExpTail(currentExpression);
         }
 
         token = isUnop();
         if (token != null) {
-            currentExpression.add(token);
+            currentExpression.add(new ValueNode(token));
             return isExpTail(currentExpression);
         }
 
-        List<Token> tokens = isPrefixExp(currentExpression);
+        List<Node> tokens = isPrefixExp(currentExpression);
         if (currentExpression.size() < tokens.size()) {
             return isExpTail(tokens);
         }
 
-//        else if(isTableConstructor()){
-//            if (isExpTail()) {
-//
-//            }
-//        }
-         else if (isVar() != null) {
+        Variable variable = isVar();
+        if (variable != null) {
             if (isArgs()) {
                 if (isFunctionCallTail()) {
 
@@ -650,6 +630,8 @@ class SyntacticalAnalysis {
                 } else {
                     printError(511);
                 }
+            } else {
+                currentExpression.add(variable);
             }
 
             return isExpTail(currentExpression);
@@ -661,10 +643,12 @@ class SyntacticalAnalysis {
         return currentExpression;
     }
 
-    private List<Token> isExpTail(List<Token> currentExpression) {
+    private List<Node> isExpTail(List<Node> currentExpression) {
         Token binop = isBinop();
         if (binop != null) {
-            currentExpression.add(binop);
+            OperatorFactory operatorFactory = new OperatorFactory();
+
+            currentExpression.add(operatorFactory.getOperator(binop));
             int originalSize = currentExpression.size();
             currentExpression = isExp(currentExpression);
 
@@ -700,7 +684,7 @@ class SyntacticalAnalysis {
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
 
-    private List<Token> isPrefixExp(List<Token> currentExpression) {
+    private List<Node> isPrefixExp(List<Node> currentExpression) {
         if (isLeftParenthesis() != null) {
             int originalSize = currentExpression.size();
             currentExpression = isExp(currentExpression);
@@ -716,7 +700,7 @@ class SyntacticalAnalysis {
         return currentExpression;
     }
 
-    private List<Token> isPrefixExp() {
+    private List<Node> isPrefixExp() {
         return isPrefixExp(new ArrayList<>());
     }
 
@@ -796,7 +780,7 @@ class SyntacticalAnalysis {
 
     private boolean isArgs() {
         if (isLeftParenthesis() != null) {
-            List<List<Token>> expressions = isExpList();
+            List<List<Node>> expressions = isExpList();
 
             if (expressions != null) {
                 if (isRightParenthesis() != null) {

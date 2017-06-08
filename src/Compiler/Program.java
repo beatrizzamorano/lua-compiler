@@ -10,12 +10,10 @@ import java.util.Objects;
 class Program {
     private HashMap<String, Variable> globalVariables;
     private HashMap<String, Function> functions;
-    private List<Statement> statements;
 
     Program() {
         this.globalVariables = new HashMap<>();
         this.functions = new HashMap<>();
-        this.statements = new ArrayList<Statement>();
     }
 
     void addGlobalVariable(Variable variable) throws SemanthicException {
@@ -76,9 +74,5 @@ class Program {
         Function function = functions.get(functionName);
         function.addLocalVariable(variable);
         functions.put(functionName, function);
-    }
-
-    void addStatement(Statement statement) {
-        this.statements.add(statement);
     }
 }

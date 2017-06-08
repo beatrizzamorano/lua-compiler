@@ -1,12 +1,14 @@
 package Compiler;
 
+import Expressions.Node;
+
 import java.util.HashMap;
 import java.util.Queue;
 
 /**
  * Created by beatrizzamorano on 3/12/17.
  */
-public class Variable {
+public class Variable implements Node {
     private int id;
     private TypeEnum type;
     private String name;
