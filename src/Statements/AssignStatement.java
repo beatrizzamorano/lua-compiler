@@ -10,6 +10,7 @@ import java.util.List;
 public class AssignStatement implements Statement {
     ASTNode syntaxTree;
     ShuntingYardParser parser;
+    ASTEvaluator evaluator = new ASTEvaluator();
 
     public AssignStatement(Variable variable, List<Node> expression) {
         parser = new ShuntingYardParser();
@@ -26,6 +27,6 @@ public class AssignStatement implements Statement {
 
     @Override
     public void evaluate() throws SemanthicException {
-//        ASTEvaluator evaluator = new ASTEvaluator(syntaxTree);
+        evaluator.evaluateAST(syntaxTree);
     }
 }

@@ -18,5 +18,8 @@ public class GroupAssignStatement implements Statement {
 
     @Override
     public void evaluate() throws SemanthicException {
+        for (AssignStatement assignStatement : assignStatements) {
+            assignStatement.evaluate();
+        }
     }
 }
