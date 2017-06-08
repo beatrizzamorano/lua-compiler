@@ -18,18 +18,21 @@ class SyntacticalAnalysis {
 
     SyntacticalAnalysis(List<Token> tokens) {
         this.iterator = tokens.listIterator();
-        program = Program.getInstance();
+        program = Program.newInstance();
 
         getNextToken();
         List<Statement> block = isBlock();
 
-        for (Statement statement : block) {
-            try {
-                statement.evaluate();
-            } catch (SemanthicException ex) {
-                printError(ex.getErrorNumber());
+        if (block != null) {
+            for (Statement statement : block) {
+                try {
+                    statement.evaluate();
+                } catch (SemanthicException ex) {
+                    printError(ex.getErrorNumber());
+                }
             }
         }
+
 
         if (block != null && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");

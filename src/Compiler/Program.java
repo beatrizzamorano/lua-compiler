@@ -8,7 +8,7 @@ import java.util.List;
 import java.util.Objects;
 
 public class Program {
-    private static Program instance = new Program();
+    private static Program instance;
 
     private HashMap<String, Variable> globalVariables;
     private HashMap<String, Function> functions;
@@ -19,6 +19,14 @@ public class Program {
     }
 
     public static Program getInstance() {
+        if (instance == null) {
+            instance = new Program();
+        }
+        return instance;
+    }
+
+    public static Program newInstance() {
+        instance = new Program();
         return instance;
     }
 

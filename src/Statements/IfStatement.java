@@ -22,6 +22,7 @@ public class IfStatement implements Statement {
     public IfStatement(List<Node> expression) {
         parser = new ShuntingYardParser();
         elseIfStatements = new ArrayList<>();
+        elseStatements = new ArrayList<>();
         this.firstConditional = parser.convertInfixNotationToAST(expression);
     }
 
