@@ -1,12 +1,14 @@
 package Compiler;
 
+import Expressions.Node;
+
 import java.util.HashMap;
 import java.util.Queue;
 
 /**
  * Created by beatrizzamorano on 3/12/17.
  */
-public class Variable {
+public class Variable implements Node {
     private int id;
     private TypeEnum type;
     private String name;
@@ -69,6 +71,10 @@ public class Variable {
 
     public HashMap<String, Variable> getProperties() {
         return this.properties;
+    }
+
+    public Token getToken() {
+        return new Token(this.name, 200, 0);
     }
 
 }

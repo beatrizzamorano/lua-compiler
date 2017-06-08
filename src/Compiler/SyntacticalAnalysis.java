@@ -1,16 +1,13 @@
 package Compiler;
 
-import Expressions.ASTNode;
-import Expressions.ShuntingYardParser;
-
+import Expressions.Node;
+import Expressions.OperatorFactory;
+import Expressions.ValueNode;
+import Statements.*;
 import javax.swing.*;
 import java.util.*;
 
-/**
- * Created by beatrizzamorano on 1/1/17.
- */
-public class SyntacticalAnalysis {
-    private List<Token> tokens;
+class SyntacticalAnalysis {
     private ListIterator<Token> iterator;
     private Token currentToken;
     private String errorStack = "";
@@ -18,19 +15,23 @@ public class SyntacticalAnalysis {
     private boolean hasReturnValue;
     private Function function;
     private Queue<String> variableConstruct;
-    private List<Token> currentExpression;
-    private ShuntingYardParser expressionParser;
-    private int expressionDeepness = 0;
 
-    public SyntacticalAnalysis(List<Token> tokens) {
-        this.tokens = tokens;
+    SyntacticalAnalysis(List<Token> tokens) {
         this.iterator = tokens.listIterator();
         program = new Program();
-        currentExpression = new LinkedList<Token>();
-        expressionParser = new ShuntingYardParser();
 
         getNextToken();
-        if(isBlock() && errorStack.isEmpty()) {
+        List<Statement> block = isBlock();
+
+        for (Statement statement : block) {
+            try {
+                statement.evaluate();
+            } catch (SemanthicException ex) {
+                printError(ex.getErrorNumber());
+            }
+        }
+
+        if (block != null && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
         } else {
             JOptionPane.showMessageDialog(null, errorStack);
@@ -72,87 +73,132 @@ public class SyntacticalAnalysis {
             case 523 : return "Tried to declare a local variable with the name of an existing function.";
             case 524 : return "Tried to declare a function with the name of an existing global variable.";
             case 525 : return "Tried to declare a global variable with the name of an existing function.";
+            case 526 : return "Tried to evaluate a non-supported value.";
+            case 527 : return "Nothing to compare in expression";
+            case 528 : return "Incompatible types";
+            case 529 : return "If statement expects a boolean expression";
+            case 530 : return "For statement expects a boolean expression";
 
             default : return "";
         }
 
     }
 
-    private boolean isBinop() {
-        if (isPlus() ||
-                isMinus() ||
-                isAsterisk() ||
-                isSlash() ||
-                isCircumflexAccent() ||
-                isPercent() ||
-                isDoubleDot() ||
-                isLessThan() ||
-                isLessOrEqualThan() ||
-                isGreaterThan() ||
-                isGreaterOrEqualThan() ||
-                isEqual() ||
-                isDifferent() ||
-                isAnd() ||
-                isOr()) return true;
-        return false;
+    private Token isBinop() {
+        Token binop;
+
+        binop = isPlus();
+        if (binop != null) return binop;
+
+        binop = isMinus();
+        if (binop != null) return binop;
+
+        binop = isAsterisk();
+        if (binop != null) return binop;
+
+        binop = isSlash();
+        if (binop != null) return binop;
+
+        binop = isCircumflexAccent();
+        if (binop != null) return binop;
+
+        binop = isPercent();
+        if (binop != null) return binop;
+
+        binop = isDoubleDot();
+        if (binop != null) return binop;
+
+        binop = isLessThan();
+        if (binop != null) return binop;
+
+        binop = isLessOrEqualThan();
+        if (binop != null) return binop;
+
+        binop = isGreaterThan();
+        if (binop != null) return binop;
+
+        binop = isGreaterOrEqualThan();
+        if (binop != null) return binop;
+
+        binop = isEqual();
+        if (binop != null) return binop;
+
+        binop = isDifferent();
+        if (binop != null) return binop;
+
+        binop = isAnd();
+        if (binop != null) return binop;
+
+        binop = isOr();
+        if (binop != null) return binop;
+
+        return null;
     }
 
-    private boolean isUnop(){
-        if (isMinus() ||
-                isNot() ||
-                isHash()) return true;
-        return false;
+    private Token isUnop(){
+        Token unop;
+
+        unop = isMinus();
+        if (unop != null) return unop;
+
+        unop = isNot();
+        if (unop != null) return unop;
+
+        unop = isHash();
+        if (unop != null) return unop;
+
+        return null;
     }
 
     private boolean isFieldSep(){
-        if (isComma() ||
-                isSemicolon()) return true;
-        return false;
+        return isComma() || isSemicolon();
     }
 
     //block ::= chunk
 
-    private boolean isBlock(){
-        if(isChunk()){
-            return true;
-        }
-
-        return false;
+    private List<Statement> isBlock() {
+        return isChunk();
     }
 
     //chunk ::= {stat [`;´]} [laststat [`;´]]
 
-    private boolean isChunk(){
+    private List<Statement> isChunk(){
+        List<Statement> statements = new ArrayList<>();
+
         try {
-            while(isStat()) {
+
+            Statement statement = isStat();
+            while (statement != null) {
+                statements.add(statement);
+                isSemicolon();
+
+                statement = isStat();
+            }
+
+            if (isLastStat()) {
                 isSemicolon();
             }
-            if(isLastStat()) {
-                isSemicolon();
-            }
-            return true;
+
+            return statements.size() > 0 ? statements : null;
+
         } catch (NullPointerException ex) {
-            return true;
+            return statements.size() > 0 ? statements : null;
         }
     }
 
     /*stat ::=
          varlist `=´ explist |
 		 functioncall |
-		 do block end |
-		 while exp do block end |
-		 repeat block until exp |
 		 if exp then block {elseif exp then block} [else block] end |
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
-		 for namelist in explist do block end |
 		 function funcname funcbody |
 		 local namelist [`=´ explist] */
 
 
-    private boolean isStat(){
+    private Statement isStat(){
         List<Variable> variables = isVarList();
 
-        if(variables != null && variables.size() > 0){
+        if (variables != null && variables.size() > 0) {
             for (Variable variable : variables) {
                 try {
                     program.addGlobalVariable(variable);
@@ -163,125 +209,125 @@ public class SyntacticalAnalysis {
             }
 
             if (variables.size() > 1) {
-                if(isAssign()) {
-                    if(isExpList()) {
-                        return true;
+                if (isAssign()) {
+                    List<List<Node>> expressions = isExpList();
+                    if (expressions != null) {
+                        if (variables.size() != expressions.size()) return null;
+
+                        return new GroupAssignStatement(variables, expressions);
                     }
-                }else {
+                } else {
                     printError(503);
                 }
-            } else if (variables.size() == 1){
-                if (isArgs()) {
-                    if (isFunctionCallTail()) {
-                        return true;
-                    }
-                } else if (isColon()) {
-                    if (isName()) {
-                        getNextToken();
-                        if (isArgs()) {
-                            if (isFunctionCallTail()) {
-                                return true;
-                            }
-                        }
-                    }
-                } else if(isAssign()){
-                    if(isExpList()){
-                        return true;
+            } else if (variables.size() == 1) {
+//                if (isArgs()) {
+//                    if (isFunctionCallTail()) {
+//                        return true;
+//                    }
+//                }
+//                else if (isColon()) {
+//                    if (isName()) {
+//                        getNextToken();
+//                        if (isArgs()) {
+//                            if (isFunctionCallTail()) {
+//                                return true;
+//                            }
+//                        }
+//                    }
+//                }
+                if (isAssign()) {
+                    List<List<Node>> expressions = isExpList();
+                    if (expressions != null) {
+                        return new AssignStatement(variables.get(0), expressions.get(0));
                     }
                 }
-                return true;
+
+                return new GenericStatement();
             }
-        } else if(isDo()){
-            if(isBlock()){
-                if(isEnd()){
-                    return true;
-                } else {
-                    printError(513);
-                }
-            }
-        }else if(isFunctionCall()){
-            return true;
-        }else if(isWhile()){
-            if(isExp() != null){
-                if(isDo()){
-                    if(isBlock()){
-                        if(isEnd()){
-                            return true;
-                        } else{
-                            printError(513);
-                        }
-                    }
-                } else{
-                    printError(515);
-                }
-            }
-        }else if(isRepeat()){
-            if(isBlock()){
-                if(isUntil()){
-                    if(isExp() != null){
-                        return true;
-                    }
-                } else{
-                    printError(516);
-                }
-            }
-        }else if(isIf()){
-            if(isExp() != null){
-                if(isThen()){
-                    if(isBlock()){
-                        while(isElseIf()){
-                            if(isExp() != null){
-                                if(isThen()){
-                                    if (!isBlock()) {
-                                        return false;
+        } else if (isFunctionCall()) {
+            return new GenericStatement();
+        }
+        else if (isIf()) {
+            List<Node> expression = isExp();
+            if (expression != null) {
+                IfStatement ifStatement = new IfStatement(expression);
+
+                if (isThen()) {
+                    List<Statement> firstConditionalStatements = isBlock();
+                    if (firstConditionalStatements != null) {
+                        ifStatement.setStatements(firstConditionalStatements);
+
+                        while (isElseIf()) {
+                            List<Node> elseIfExpression = isExp();
+
+                            if (elseIfExpression != null) {
+                                if (isThen()) {
+                                    List<Statement> block = isBlock();
+                                    if (block != null) {
+                                        ifStatement.addElseIfStatement(new ElseIfStatement(elseIfExpression, block));
+                                    } else {
+                                        return null;
                                     }
                                 } else {
                                     printError(517);
                                 }
                             }
-
                         }
-                        if(isElse()){
-                            if(!isBlock()){
-                                return false;
+                        if (isElse()) {
+                            List<Statement> block = isBlock();
+                            if (block != null) {
+                                ifStatement.setElseStatements(block);
+                            } else {
+                                return null;
                             }
                         }
-                       if(isEnd()){
-                           return true;
-                       } else{
+                       if (isEnd()) {
+                           return ifStatement;
+                       } else {
                            printError(513);
-                           return false;
+                           return null;
                        }
                     }
                 } else {
                     printError(517);
                 }
             }
-        } else if (isFor()) {
-            int nameCount = isNameWithCount();
-            if(nameCount == 1){
-                if(isAssign()){
-                    if(isExp() != null){
-                        if(isComma()){
-                            if(isExp() != null){
-                                if(isComma() && isExp() != null){
-                                    if(isDo()){
-                                        if(isBlock()){
-                                            if(isEnd()){
-                                                return true;
-                                            } else {
-                                                printError(513);
+        }
+        else if (isFor()) {
+            List<String> names = isNameList();
+
+            if (names != null && names.size() == 1) {
+                if (isAssign()) {
+                    List<Node> assignExpression = isExp();
+
+                    if (assignExpression != null) {
+                        if (isComma()) {
+                            List<Node> conditionExpression = isExp();
+
+                            if (conditionExpression != null) {
+                                AssignStatement assignStatement = new AssignStatement(new Variable(names.get(0)), assignExpression);
+                                ForStatement forStatement = new ForStatement(assignStatement, conditionExpression);
+
+                                if (isComma()) {
+                                    List<Node> cycleExpression = isExp();
+
+                                    if (cycleExpression != null) {
+                                        forStatement.setCycleExpression(cycleExpression);
+
+                                        if (isDo()) {
+                                            List<Statement> statements = isBlock();
+
+                                            if (statements != null) {
+                                                forStatement.setCycleStatements(statements);
+
+                                                if (isEnd()) {
+                                                    return forStatement;
+                                                } else {
+                                                    printError(513);
+                                                }
                                             }
-                                        }
-                                    } else {
-                                        printError(515);
-                                    }
-                                }else if(isDo()){
-                                    if(isBlock()){
-                                        if(isEnd()){
-                                            return true;
                                         } else {
-                                            printError(513);
+                                            printError(515);
                                         }
                                     }
                                 } else {
@@ -290,7 +336,7 @@ public class SyntacticalAnalysis {
                             }
                         } else {
                             printError(506);
-                            return false;
+                            return null;
                         }
                     }
                 } else {
@@ -298,84 +344,72 @@ public class SyntacticalAnalysis {
                 }
             } else {
                 printError(511);
-                return false;
+                return null;
             }
 
-        } else if(isFunctionKeyword()){
-            if(isFuncName()){
-                if(isFuncBody()){
-                    return true;
+        }
+        else if (isFunctionKeyword()) {
+            if (isFuncName()) {
+                if (isFuncBody()) {
+                    return new GenericStatement();
                 }
             }
-        }else if(isLocal()){
+        } else if (isLocal()) {
             List<String> nameList = isNameList();
 
-            if(nameList != null){
+            if (nameList != null) {
+                variables = new ArrayList<Variable>();
+
                 for (String name : nameList) {
                     Variable variable = new Variable(name);
+                    variables.add(variable);
+
                     try {
                         program.addLocalVariable(function.getName(), variable);
+
                     } catch (SemanthicException ex) {
                         printError(ex.getErrorNumber());
-                        return false;
+                        return null;
                     }
                 }
 
-                if(isAssign()){
-                    if (!isExpList()) {
-                        return false;
-                    }
+                if (isAssign()) {
+                    List<List<Node>> expressions = isExpList();
+                    if (expressions == null || expressions.size() != variables.size()) return null;
+
+                    return new GroupAssignStatement(variables, expressions);
                 }
-                return true;
+
+                return new GenericStatement();
             } else {
                 printError(519);
             }
         }
 
-        return false;
+        return null;
     }
 
     //laststat ::= return [explist] | break
 
-    private boolean isLastStat(){
-        if(isReturn()){
-            if(isExpList()){
+    private boolean isLastStat() {
+        if (isReturn()) {
+            List<List<Node>> expressions = isExpList();
+            if (expressions != null) {
                 this.hasReturnValue = true;
                 return true;
             }
             return true;
 
-        }else if(isBreak()){
+        } else if(isBreak()) {
             return true;
         }
 
         return false;
     }
 
-    private int isNameWithCount() {
-        int count = 0;
-        if (isName()) {
-            getNextToken();
-            count++;
-            while(isComma()) {
-                count++;
-                if (!isName()) {
-                    printError(511);
-                    return -1;
-                }
-                getNextToken();
-            }
-        }
-
-        return count;
-    }
-
-
-
     //funcname ::= Name {`.´ Name} [`:´ Name]
     private boolean isFuncName(){
         if(isName()){
-            Token token = peekPreviousToken();
             getNextToken();
             return true;
         }
@@ -397,7 +431,7 @@ public class SyntacticalAnalysis {
                 return variable;
             }
         }
-        else if(isPrefixExp()) {
+        else if(isPrefixExp().size() > 0) {
             variableConstruct = new ArrayDeque<>();
             if(isLeftBracket()) {
                 if(isExp() != null){
@@ -407,7 +441,7 @@ public class SyntacticalAnalysis {
                             variableConstruct = null;
                             return variable;
                         }
-                    }else {
+                    } else {
                         printError(504);
                     }
                 }
@@ -427,9 +461,9 @@ public class SyntacticalAnalysis {
                 printError(509);
             }
         }
-        else if(isLeftParenthesis()) {
+        else if(isLeftParenthesis() != null) {
             if (isExp() != null) {
-                if (isRightParenthesis()) {
+                if (isRightParenthesis() != null) {
                     if (isArgs()) {
                         if (isFunctionCallTail()) {
                             return new Variable(TypeEnum.VOID);
@@ -508,131 +542,122 @@ public class SyntacticalAnalysis {
 
     //explist ::= {exp `,´} exp
 
-    private boolean isExpList() {
-        if(isExp() != null){
+    private List<List<Node>> isExpList() {
+        List<List<Node>> expressions = new ArrayList<>();
+        List<Node> expression = isExp();
+
+        if (expression.size() > 0){
+            expressions.add(expression);
+
             while(isComma()){
-                if (isExp() == null) {
-                    return false;
+                expression = isExp();
+                if (expression.size() > 0) {
+                    expressions.add(expression);
+                } else {
+                    return null;
                 }
             }
-            return true;
+            return expressions;
         }
 
-        return false;
+        return null;
     }
 
     /*exp ::=  nil | false | true | Number | String | function |
 		 prefixexp | tableconstructor | exp binop exp | unop exp
 */
 
+    private List<Node> isExp() {
+        return isExp(new ArrayList<>());
+    }
 
-    private ASTNode isExp() {
-        if(isNil()) {
-            currentExpression.add(peekPreviousToken());
+    private List<Node> isExp(List<Node> currentExpression) {
+        Token token;
 
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        } else if(isFalse()){
-            currentExpression.add(peekPreviousToken());
+        token= isNil();
+        if (token != null) {
+            currentExpression.add(new ValueNode(token));
+            return isExpTail(currentExpression);
+        }
 
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        } else if(isTrue()){
-            currentExpression.add(peekPreviousToken());
+        token = isFalse();
+        if (token != null) {
+            currentExpression.add(new ValueNode(token));
+            return isExpTail(currentExpression);
+        }
 
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        } else if(isNumber()){
-            currentExpression.add(peekPreviousToken());
+        token = isTrue();
+        if (token != null) {
+            currentExpression.add(new ValueNode(token));
+            return isExpTail(currentExpression);
+        }
 
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        } else if(isString()){
-            currentExpression.add(peekPreviousToken());
+        token = isNumber();
+        if (token != null) {
+            currentExpression.add(new ValueNode(token));
+            return isExpTail(currentExpression);
+        }
 
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        } else if(isPrefixExp()){
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        }else if(isTableConstructor()){
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
-        } else if(isUnop()){
-            if(isExp() != null){
-                if (isExpTail() && expressionDeepness == 0) {
-                    ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                    currentExpression = new LinkedList<>();
-                    return expression;
-                }
-            }
-        } else if (isVar() != null) {
+        token = isString();
+        if (token != null) {
+            currentExpression.add(new ValueNode(token));
+            return isExpTail(currentExpression);
+        }
+
+        token = isUnop();
+        if (token != null) {
+            currentExpression.add(new ValueNode(token));
+            return isExpTail(currentExpression);
+        }
+
+        List<Node> tokens = isPrefixExp(currentExpression);
+        if (currentExpression.size() < tokens.size()) {
+            return isExpTail(tokens);
+        }
+
+        Variable variable = isVar();
+        if (variable != null) {
             if (isArgs()) {
                 if (isFunctionCallTail()) {
-                    ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                    currentExpression = new LinkedList<>();
-                    return expression;
+
                 }
             } else if (isColon()) {
                 if (isName()) {
                     getNextToken();
                     if (isFunctionCallTail()) {
-                        ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                        currentExpression = new LinkedList<>();
-                        return expression;
+
                     }
                 } else {
                     printError(511);
                 }
+            } else {
+                currentExpression.add(variable);
             }
-            else if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
+
+            return isExpTail(currentExpression);
+
         } else if (isFunctionCall()) {
-            if (isExpTail() && expressionDeepness == 0) {
-                ASTNode expression = expressionParser.convertInfixNotationToAST(currentExpression);
-                currentExpression = new LinkedList<>();
-                return expression;
-            }
+            return isExpTail(currentExpression);
         }
 
-        return null;
-
+        return currentExpression;
     }
 
-    private boolean isExpTail() {
-        if (isBinop()) {
-            if (isExp() != null) {
-                if (isExpTail()) {
-                    return true;
-                }
+    private List<Node> isExpTail(List<Node> currentExpression) {
+        Token binop = isBinop();
+        if (binop != null) {
+            OperatorFactory operatorFactory = new OperatorFactory();
+
+            currentExpression.add(operatorFactory.getOperator(binop));
+            int originalSize = currentExpression.size();
+            currentExpression = isExp(currentExpression);
+
+            if (originalSize < currentExpression.size()) {
+                return isExpTail(currentExpression);
             }
         }
 
-        return true;
+        return currentExpression;
     }
 
 
@@ -659,22 +684,24 @@ public class SyntacticalAnalysis {
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
 
-    private boolean isPrefixExp() {
-        if(isLeftParenthesis()){
-            expressionDeepness++;
-            currentExpression.add(peekPreviousToken());
-            if(isExp() != null || expressionDeepness > 0){
-                if(isRightParenthesis()){
-                    expressionDeepness--;
-                    currentExpression.add(peekPreviousToken());
-                    return true;
-                }else {
+    private List<Node> isPrefixExp(List<Node> currentExpression) {
+        if (isLeftParenthesis() != null) {
+            int originalSize = currentExpression.size();
+            currentExpression = isExp(currentExpression);
+            if (originalSize < currentExpression.size()) {
+                if (isRightParenthesis() != null) {
+                    return currentExpression;
+                } else {
                     printError(507);
                 }
             }
         }
 
-        return false;
+        return currentExpression;
+    }
+
+    private List<Node> isPrefixExp() {
+        return isPrefixExp(new ArrayList<>());
     }
 
 
@@ -698,9 +725,9 @@ public class SyntacticalAnalysis {
             } else {
                 printError(508);
             }
-        } else if (isLeftParenthesis()) {
+        } else if (isLeftParenthesis() != null) {
             if (isExp() != null) {
-                if (isRightParenthesis()) {
+                if (isRightParenthesis() != null) {
                     if (isArgs()) {
                         if (isFunctionCallTail()) {
                             return true;
@@ -751,22 +778,24 @@ public class SyntacticalAnalysis {
 
     //args ::=  `(´ [explist] `)´ | tableconstructor | String
 
-    private boolean isArgs(){
-        if(isLeftParenthesis()){
-            if(isExpList()){
-                if(isRightParenthesis()){
+    private boolean isArgs() {
+        if (isLeftParenthesis() != null) {
+            List<List<Node>> expressions = isExpList();
+
+            if (expressions != null) {
+                if (isRightParenthesis() != null) {
                     return true;
                 } else {
                     printError(507);
                 }
-            } else if(isRightParenthesis()) {
+            } else if (isRightParenthesis() != null) {
                 return true;
             } else {
                 printError(507);
             }
-        }else if(isTableConstructor()){
+        } else if (isTableConstructor()) {
             return true;
-        }else if(isString()){
+        } else if (isString() != null) {
             return true;
         }
 
@@ -793,45 +822,57 @@ public class SyntacticalAnalysis {
 
     //funcbody ::= `(´ [parlist] `)´ block end
 
-    private boolean isFuncBody(){
+    private boolean isFuncBody() {
         function = new Function();
         Token functionName = peekPreviousToken();
         function.setName(functionName.lexeme);
+
         try {
             program.addFunction(function);
+
         } catch (SemanthicException ex) {
             printError(ex.getErrorNumber());
             return false;
         }
 
-        if(isLeftParenthesis()){
+        if (isLeftParenthesis() != null) {
             List<Parameter> parameters = isParList();
-            if(parameters != null){
+
+            if (parameters != null) {
                 function.addParameters(parameters);
                 program.updateFunction(function);
-                if(isRightParenthesis()) {
-                    if(isBlock()){
+
+                if (isRightParenthesis() != null) {
+                    List<Statement> statements = isBlock();
+
+                    if (statements != null) {
                         function.setHasReturnValue(this.hasReturnValue);
+                        function.setStatements(statements);
                         program.updateFunction(function);
                         hasReturnValue = false;
 
-                        if(isEnd()){
+                        if (isEnd()) {
                             return true;
                         }
-                    } else{
+
+                    } else {
                         printError(513);
                     }
                 }
-            } else if(isRightParenthesis()){
-                if(isBlock()){
+            } else if (isRightParenthesis() != null) {
+                List<Statement> statements = isBlock();
+
+                if (statements != null) {
                     function.setHasReturnValue(this.hasReturnValue);
+                    function.setStatements(statements);
                     program.updateFunction(function);
                     hasReturnValue = false;
 
-                    if(isEnd()){
+                    if (isEnd()) {
                         function = null;
                         return true;
-                    }else{
+
+                    } else {
                         printError(513);
                     }
                 }
@@ -864,19 +905,22 @@ public class SyntacticalAnalysis {
     //namelist ::= Name {`,´ Name}
 
     private List<String> isNameList(){
-        ArrayList nameList = new ArrayList();
-        if(isName()){
-            nameList.add(currentToken.lexeme);
+        List<String> nameList = new ArrayList<>();
 
+        if (isName()) {
+            nameList.add(currentToken.lexeme);
             getNextToken();
+
             while (isComma()) {
                 if (!isName()) {
                     printError(511);
                     return null;
                 }
+
                 nameList.add(currentToken.lexeme);
                 getNextToken();
             }
+
             return nameList;
         }
 
@@ -953,8 +997,7 @@ public class SyntacticalAnalysis {
 
 
     private boolean isName() {
-        if (currentToken.id != 100) return false;
-        return true;
+        return currentToken.id == 100;
     }
 
     private boolean isDot() {
@@ -994,10 +1037,10 @@ public class SyntacticalAnalysis {
         return true;
     }
 
-    private boolean isString() {
-        if (currentToken.id != 128) return false;
+    private Token isString() {
+        if (currentToken.id != 128) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
     private boolean isColon() {
@@ -1006,39 +1049,33 @@ public class SyntacticalAnalysis {
         return true;
     }
 
-    private boolean isNumber() {
-        if (currentToken.id != 101) return false;
+    private Token isNumber() {
+        if (currentToken.id != 101) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isTrue() {
-        if (currentToken.id != 218) return false;
+    private Token isTrue() {
+        if (currentToken.id != 218) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isFalse() {
-        if (currentToken.id != 206) return false;
+    private Token isFalse() {
+        if (currentToken.id != 206) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isNil() {
-        if (currentToken.id != 212) return false;
+    private Token isNil() {
+        if (currentToken.id != 212) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
 
     private boolean isLocal() {
         if (currentToken.id != 211) return false;
-        getNextToken();
-        return true;
-    }
-
-    private boolean isIn() {
-        if (currentToken.id != 210) return false;
         getNextToken();
         return true;
     }
@@ -1101,16 +1138,16 @@ public class SyntacticalAnalysis {
     }
 
 
-    private boolean isRightParenthesis(){
-        if (currentToken.id != 117) return false;
+    private Token isRightParenthesis(){
+        if (currentToken.id != 117) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isLeftParenthesis(){
-        if (currentToken.id != 116) return false;
+    private Token isLeftParenthesis(){
+        if (currentToken.id != 116) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
     private boolean isLeftCurlyBracket() {
@@ -1143,127 +1180,110 @@ public class SyntacticalAnalysis {
         return true;
     }
 
-    private boolean isHash() {
-        if (currentToken.id != 108) return false;
-        currentExpression.add(currentToken);
+    private Token isHash() {
+        if (currentToken.id != 108) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isNot() {
-        if (currentToken.id != 213) return false;
-        currentExpression.add(currentToken);
+    private Token isNot() {
+        if (currentToken.id != 213) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isOr() {
-        if (currentToken.id != 214) return false;
-        currentExpression.add(currentToken);
+    private Token isOr() {
+        if (currentToken.id != 214) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isAnd() {
-        if (currentToken.id != 200) return false;
-        currentExpression.add(currentToken);
+    private Token isAnd() {
+        if (currentToken.id != 200) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isDifferent() {
-        if (currentToken.id != 110) return false;
-        currentExpression.add(currentToken);
+    private Token isDifferent() {
+        if (currentToken.id != 110) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isEqual() {
-        if (currentToken.id != 109) return false;
-        currentExpression.add(currentToken);
+    private Token isEqual() {
+        if (currentToken.id != 109) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isGreaterOrEqualThan() {
-        if (currentToken.id != 112) return false;
-        currentExpression.add(currentToken);
+    private Token isGreaterOrEqualThan() {
+        if (currentToken.id != 112) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isGreaterThan() {
-        if (currentToken.id != 114) return false;
-        currentExpression.add(currentToken);
+    private Token isGreaterThan() {
+        if (currentToken.id != 114) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isLessOrEqualThan() {
-        if (currentToken.id != 111) return false;
-        currentExpression.add(currentToken);
+    private Token isLessOrEqualThan() {
+        if (currentToken.id != 111) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isLessThan() {
-        if (currentToken.id != 113) return false;
-        currentExpression.add(currentToken);
+    private Token isLessThan() {
+        if (currentToken.id != 113) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isDoubleDot() {
-        if (currentToken.id != 126) return false;
-        currentExpression.add(currentToken);
+    private Token isDoubleDot() {
+        if (currentToken.id != 126) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isPercent() {
-        if (currentToken.id != 106) return false;
-        currentExpression.add(currentToken);
+    private Token isPercent() {
+        if (currentToken.id != 106) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isCircumflexAccent() {
-        if (currentToken.id != 107) return false;
-        currentExpression.add(currentToken);
+    private Token isCircumflexAccent() {
+        if (currentToken.id != 107) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isSlash() {
-        if (currentToken.id != 105) return false;
-        currentExpression.add(currentToken);
+    private Token isSlash() {
+        if (currentToken.id != 105) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isAsterisk() {
-        if (currentToken.id != 104) return false;
-        currentExpression.add(currentToken);
+    private Token isAsterisk() {
+        if (currentToken.id != 104) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isMinus() {
-        if (currentToken.id != 103) return false;
-        currentExpression.add(currentToken);
+    private Token isMinus() {
+        if (currentToken.id != 103) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
-    private boolean isPlus() {
-        if (currentToken.id != 102) return false;
-        currentExpression.add(currentToken);
+    private Token isPlus() {
+        if (currentToken.id != 102) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
 
     }
 
-    public void getNextToken() {
+    private void getNextToken() {
         try {
             currentToken = iterator.next();
         }
@@ -1272,7 +1292,7 @@ public class SyntacticalAnalysis {
         }
     }
 
-    public Token peekPreviousToken() {
+    private Token peekPreviousToken() {
         iterator.previous();
         Token previous = iterator.previous();
         iterator.next();

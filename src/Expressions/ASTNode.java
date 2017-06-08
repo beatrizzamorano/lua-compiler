@@ -4,17 +4,17 @@ package Expressions;
  * Created by beatriz zamorano on 21/03/17.
  */
 public class ASTNode {
-    private final Object value;
+    private final Node value;
     private final ASTNode leftASTNode;
     private final ASTNode rightASTNode;
 
-    public ASTNode(Object value, ASTNode leftASTNode, ASTNode rightASTNode) {
+    public ASTNode(Node value, ASTNode leftASTNode, ASTNode rightASTNode) {
         this.value = value;
         this.leftASTNode = leftASTNode;
         this.rightASTNode = rightASTNode;
     }
 
-    public Object getValue() {
+    public Node getValue() {
         return value;
     }
 
