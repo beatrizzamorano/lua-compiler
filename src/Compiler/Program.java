@@ -8,23 +8,29 @@ import java.util.List;
 import java.util.Objects;
 
 class Program {
+    private static Program instance = new Program();
+
     private HashMap<String, Variable> globalVariables;
     private HashMap<String, Function> functions;
 
-    Program() {
+    private Program() {
         this.globalVariables = new HashMap<>();
         this.functions = new HashMap<>();
     }
 
+    public static Program getInstance() {
+        return instance;
+    }
+
     void addGlobalVariable(Variable variable) throws SemanthicException {
-        for (Function function : functions.values()) {
+        for (Function function : instance.functions.values()) {
             if (Objects.equals(function.getName(), variable.getName())) {
                 throw new SemanthicException(525);
             }
         }
 
-        if (globalVariables.containsKey(variable.getName())) {
-            Variable currentVariable = globalVariables.get(variable.getName());
+        if (instance.globalVariables.containsKey(variable.getName())) {
+            Variable currentVariable = instance.globalVariables.get(variable.getName());
             Variable newProperty = (Variable) variable.getProperties().values().toArray()[0];
 
             while (currentVariable.getProperties().containsKey(newProperty.getName()) && !newProperty.getProperties().isEmpty()) {
@@ -35,44 +41,44 @@ class Program {
             currentVariable.addProperty(newProperty);
 
         } else {
-            this.globalVariables.put(variable.getName(), variable);
+            instance.globalVariables.put(variable.getName(), variable);
         }
     }
 
     void addFunction(Function function) throws SemanthicException {
-        for (Function declaredFunction : functions.values()) {
+        for (Function declaredFunction : instance.functions.values()) {
             if (Objects.equals(function.getName(), declaredFunction.getName())) {
                 throw new SemanthicException(521);
             }
         }
 
-        for (Variable variable : globalVariables.values()) {
+        for (Variable variable : instance.globalVariables.values()) {
             if (Objects.equals(function.getName(), variable.getName())) {
                 throw new SemanthicException(524);
             }
         }
-        this.functions.put(function.getName(), function);
+        instance.functions.put(function.getName(), function);
     }
 
     void updateFunction(Function function) {
-        this.functions.put(function.getName(), function);
+        instance.functions.put(function.getName(), function);
     }
 
     void addLocalVariable(String functionName, Variable variable) throws SemanthicException {
-        for (Variable globalVariable : globalVariables.values()) {
+        for (Variable globalVariable : instance.globalVariables.values()) {
             if (globalVariable.getName().equals(variable.getName())) {
                 throw new SemanthicException(522);
             }
         }
 
-        for (Function function : functions.values()) {
+        for (Function function : instance.functions.values()) {
             if (function.getName().equals(variable.getName())) {
                 throw new SemanthicException(523);
             }
         }
 
-        Function function = functions.get(functionName);
+        Function function = instance.functions.get(functionName);
         function.addLocalVariable(variable);
-        functions.put(functionName, function);
+        instance.functions.put(functionName, function);
     }
 }

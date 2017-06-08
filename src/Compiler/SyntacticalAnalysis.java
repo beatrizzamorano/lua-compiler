@@ -18,7 +18,7 @@ class SyntacticalAnalysis {
 
     SyntacticalAnalysis(List<Token> tokens) {
         this.iterator = tokens.listIterator();
-        program = new Program();
+        program = Program.getInstance();
 
         getNextToken();
         List<Statement> block = isBlock();
