@@ -7,7 +7,6 @@ import Compiler.*;
  */
 public class ASTEvaluator {
 
-
     public TypeEnum evaluateAST(ASTNode tree) throws SemanthicException {
         TypeEnum typeLeft, typeRight;
         Node value = tree.getValue();
@@ -66,6 +65,8 @@ public class ASTEvaluator {
                 case "=":
                     typeRight = evaluateAST(tree.getRightASTNode());
                     Node variableNode = tree.getLeftASTNode().getValue();
+
+                    Program program = Program.getInstance();
 
                     if (variableNode instanceof Variable) {
                         ((Variable) variableNode).setType(typeRight);

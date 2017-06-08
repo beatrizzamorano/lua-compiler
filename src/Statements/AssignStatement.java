@@ -18,7 +18,7 @@ public class AssignStatement implements Statement {
         BaseOperator assignOperator = operatorFactory.getOperator(new Token("=", 115, 0));
 
         List<Node> assign = new ArrayList<>();
-        assign.add(new ValueNode(variable.getToken()));
+        assign.add(variable);
         assign.add(assignOperator);
         assign.addAll(expression);
 

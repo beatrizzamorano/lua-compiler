@@ -7,7 +7,7 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Objects;
 
-class Program {
+public class Program {
     private static Program instance = new Program();
 
     private HashMap<String, Variable> globalVariables;
@@ -22,7 +22,7 @@ class Program {
         return instance;
     }
 
-    void addGlobalVariable(Variable variable) throws SemanthicException {
+    public void addGlobalVariable(Variable variable) throws SemanthicException {
         for (Function function : instance.functions.values()) {
             if (Objects.equals(function.getName(), variable.getName())) {
                 throw new SemanthicException(525);
@@ -45,7 +45,7 @@ class Program {
         }
     }
 
-    void addFunction(Function function) throws SemanthicException {
+    public void addFunction(Function function) throws SemanthicException {
         for (Function declaredFunction : instance.functions.values()) {
             if (Objects.equals(function.getName(), declaredFunction.getName())) {
                 throw new SemanthicException(521);
@@ -60,11 +60,11 @@ class Program {
         instance.functions.put(function.getName(), function);
     }
 
-    void updateFunction(Function function) {
+    public void updateFunction(Function function) {
         instance.functions.put(function.getName(), function);
     }
 
-    void addLocalVariable(String functionName, Variable variable) throws SemanthicException {
+    public void addLocalVariable(String functionName, Variable variable) throws SemanthicException {
         for (Variable globalVariable : instance.globalVariables.values()) {
             if (globalVariable.getName().equals(variable.getName())) {
                 throw new SemanthicException(522);
