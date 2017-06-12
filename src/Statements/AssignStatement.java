@@ -3,13 +3,17 @@ package Statements;
 import Expressions.*;
 import Compiler.Variable;
 import Compiler.*;
+import Parsing.ASTParser;
+import Parsing.IParse;
 
+import javax.swing.text.html.parser.Parser;
 import java.util.ArrayList;
 import java.util.List;
 
-public class AssignStatement implements Statement {
+public class AssignStatement implements Statement, IParse {
     ASTNode syntaxTree;
     ShuntingYardParser parser;
+    ASTEvaluator evaluator = new ASTEvaluator();
 
     public AssignStatement(Variable variable, List<Node> expression) {
         parser = new ShuntingYardParser();
@@ -17,7 +21,7 @@ public class AssignStatement implements Statement {
         BaseOperator assignOperator = operatorFactory.getOperator(new Token("=", 115, 0));
 
         List<Node> assign = new ArrayList<>();
-        assign.add(new ValueNode(variable.getToken()));
+        assign.add(variable);
         assign.add(assignOperator);
         assign.addAll(expression);
 
@@ -26,6 +30,13 @@ public class AssignStatement implements Statement {
 
     @Override
     public void evaluate() throws SemanthicException {
-//        ASTEvaluator evaluator = new ASTEvaluator(syntaxTree);
+        evaluator.evaluateAST(syntaxTree);
+    }
+
+    @Override
+    public String parse() {
+        String parsedExpression = ASTParser.parseAST(syntaxTree);
+        parsedExpression += "STO\n";
+        return parsedExpression;
     }
 }

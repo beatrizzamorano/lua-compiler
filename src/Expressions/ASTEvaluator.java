@@ -7,13 +7,14 @@ import Compiler.*;
  */
 public class ASTEvaluator {
 
-
     public TypeEnum evaluateAST(ASTNode tree) throws SemanthicException {
         TypeEnum typeLeft, typeRight;
         Node value = tree.getValue();
 
         if (value instanceof Variable) {
-            return value.getType();
+            Program program = Program.getInstance();
+            Variable savedVariable = program.getGlobalVariable((Variable) value);
+            return savedVariable.getType();
         }
         else if (value instanceof BaseOperator) {
             switch (((BaseOperator) value).getSymbol()) {
@@ -67,8 +68,13 @@ public class ASTEvaluator {
                     typeRight = evaluateAST(tree.getRightASTNode());
                     Node variableNode = tree.getLeftASTNode().getValue();
 
+                    Program program = Program.getInstance();
+
                     if (variableNode instanceof Variable) {
-                        ((Variable) variableNode).setType(typeRight);
+                        Variable mockVariable = (Variable) variableNode;
+                        Variable savedVariable = program.getGlobalVariable(mockVariable);
+                        savedVariable.setType(typeRight);
+
                         return typeRight;
                     } else {
                         throw new SemanthicException(528);

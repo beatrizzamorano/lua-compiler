@@ -3,6 +3,7 @@ package Compiler;
 import Expressions.Node;
 import Expressions.OperatorFactory;
 import Expressions.ValueNode;
+import Parsing.StatementsParser;
 import Statements.*;
 import javax.swing.*;
 import java.util.*;
@@ -15,27 +16,38 @@ class SyntacticalAnalysis {
     private boolean hasReturnValue;
     private Function function;
     private Queue<String> variableConstruct;
+    String pCode = "";
 
     SyntacticalAnalysis(List<Token> tokens) {
         this.iterator = tokens.listIterator();
-        program = new Program();
+        program = Program.newInstance();
 
         getNextToken();
         List<Statement> block = isBlock();
 
-        for (Statement statement : block) {
-            try {
-                statement.evaluate();
-            } catch (SemanthicException ex) {
-                printError(ex.getErrorNumber());
+        if (block != null) {
+            for (Statement statement : block) {
+                try {
+                    statement.evaluate();
+                } catch (SemanthicException ex) {
+                    printError(ex.getErrorNumber());
+                }
             }
         }
+
+        StatementsParser parser = new StatementsParser(block);
+        String parsedCode = parser.parse();
+        pCode = parsedCode;
 
         if (block != null && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
         } else {
             JOptionPane.showMessageDialog(null, errorStack);
         }
+    }
+
+    public String getPCode() {
+        return this.pCode;
     }
 
     private void printError(int error){
@@ -155,13 +167,11 @@ class SyntacticalAnalysis {
     }
 
     //block ::= chunk
-
     private List<Statement> isBlock() {
         return isChunk();
     }
 
     //chunk ::= {stat [`;´]} [laststat [`;´]]
-
     private List<Statement> isChunk(){
         List<Statement> statements = new ArrayList<>();
 
@@ -193,8 +203,6 @@ class SyntacticalAnalysis {
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
 		 function funcname funcbody |
 		 local namelist [`=´ explist] */
-
-
     private Statement isStat(){
         List<Variable> variables = isVarList();
 
@@ -390,7 +398,6 @@ class SyntacticalAnalysis {
     }
 
     //laststat ::= return [explist] | break
-
     private boolean isLastStat() {
         if (isReturn()) {
             List<List<Node>> expressions = isExpList();
@@ -417,7 +424,6 @@ class SyntacticalAnalysis {
     }
 
     //var ::=  Name | prefixexp `[´ exp `]´ | prefixexp `.´ Name
-
     private Variable isVar(){
         if(isName()) {
             variableConstruct = new ArrayDeque<>();
@@ -541,7 +547,6 @@ class SyntacticalAnalysis {
     }
 
     //explist ::= {exp `,´} exp
-
     private List<List<Node>> isExpList() {
         List<List<Node>> expressions = new ArrayList<>();
         List<Node> expression = isExp();
@@ -564,9 +569,7 @@ class SyntacticalAnalysis {
     }
 
     /*exp ::=  nil | false | true | Number | String | function |
-		 prefixexp | tableconstructor | exp binop exp | unop exp
-*/
-
+		 prefixexp | tableconstructor | exp binop exp | unop exp */
     private List<Node> isExp() {
         return isExp(new ArrayList<>());
     }
@@ -660,22 +663,16 @@ class SyntacticalAnalysis {
         return currentExpression;
     }
 
-
     //varlist ::= var {`,´ var}
-
     private List<Variable> isVarList(){
         ArrayList<Variable> variables = new ArrayList<>();
 
         Variable variable = isVar();
         if(variable != null){
-            if (variable.getType() != TypeEnum.VOID) {
                 variables.add(variable);
-            }
             while(isComma()){
                 variable = isVar();
-                if(variable != null && variable.getType() != TypeEnum.VOID){
-                    variables.add(variable);
-                }
+                variables.add(variable);
             }
         }
 
@@ -683,7 +680,6 @@ class SyntacticalAnalysis {
     }
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
-
     private List<Node> isPrefixExp(List<Node> currentExpression) {
         if (isLeftParenthesis() != null) {
             int originalSize = currentExpression.size();
@@ -704,9 +700,7 @@ class SyntacticalAnalysis {
         return isPrefixExp(new ArrayList<>());
     }
 
-
     //functioncall ::=  prefixexp args | prefixexp `:´ Name args
-
     private boolean isFunctionCall(){
         if (isVar() != null) {
             if (isArgs()) {
@@ -777,7 +771,6 @@ class SyntacticalAnalysis {
     }
 
     //args ::=  `(´ [explist] `)´ | tableconstructor | String
-
     private boolean isArgs() {
         if (isLeftParenthesis() != null) {
             List<List<Node>> expressions = isExpList();
@@ -803,7 +796,6 @@ class SyntacticalAnalysis {
     }
 
     //function ::= function funcbody
-
     private boolean isFunction(){
         if(isFunctionKeyword()){
             if(isFuncBody()) {
@@ -821,7 +813,6 @@ class SyntacticalAnalysis {
     }
 
     //funcbody ::= `(´ [parlist] `)´ block end
-
     private boolean isFuncBody() {
         function = new Function();
         Token functionName = peekPreviousToken();
@@ -885,8 +876,6 @@ class SyntacticalAnalysis {
 
 
     //parlist ::= namelist [`,´ `...´] | `...´
-
-
     private List<Parameter> isParList(){
         List<String> nameList = isNameList();
         if(nameList != null) {
@@ -903,7 +892,6 @@ class SyntacticalAnalysis {
     }
 
     //namelist ::= Name {`,´ Name}
-
     private List<String> isNameList(){
         List<String> nameList = new ArrayList<>();
 
@@ -929,7 +917,6 @@ class SyntacticalAnalysis {
 
 
     //tableconstructor ::= `{´ [fieldlist] `}´
-
     private boolean isTableConstructor(){
         if(isLeftCurlyBracket()){
             if(isFieldList()){
@@ -951,7 +938,6 @@ class SyntacticalAnalysis {
     }
 
     //fieldlist ::= field {fieldsep field} [fieldsep]
-
     private boolean isFieldList(){
         if (isField()) {
             while (isFieldSep()) {
@@ -995,7 +981,6 @@ class SyntacticalAnalysis {
         return false;
     }
 
-
     private boolean isName() {
         return currentToken.id == 100;
     }
@@ -1023,7 +1008,6 @@ class SyntacticalAnalysis {
         getNextToken();
         return true;
     }
-
 
     private boolean isAssign() {
         if (currentToken.id != 115) return false;
@@ -1073,7 +1057,6 @@ class SyntacticalAnalysis {
         return peekPreviousToken();
     }
 
-
     private boolean isLocal() {
         if (currentToken.id != 211) return false;
         getNextToken();
@@ -1086,20 +1069,17 @@ class SyntacticalAnalysis {
         return true;
     }
 
-
     private boolean isElse() {
         if (currentToken.id != 203) return false;
         getNextToken();
         return true;
     }
 
-
     private boolean isElseIf() {
         if (currentToken.id != 204) return false;
         getNextToken();
         return true;
     }
-
 
     private boolean isThen() {
         if (currentToken.id != 217) return false;
@@ -1113,30 +1093,11 @@ class SyntacticalAnalysis {
         return true;
     }
 
-    private boolean isUntil() {
-        if (currentToken.id != 219) return false;
-        getNextToken();
-        return true;
-    }
-
-    private boolean isRepeat() {
-        if (currentToken.id != 215) return false;
-        getNextToken();
-        return true;
-    }
-
-    private boolean isWhile() {
-        if (currentToken.id != 220) return false;
-        getNextToken();
-        return true;
-    }
-
     private boolean isDo() {
         if (currentToken.id != 202) return false;
         getNextToken();
         return true;
     }
-
 
     private Token isRightParenthesis(){
         if (currentToken.id != 117) return null;

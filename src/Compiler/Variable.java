@@ -12,7 +12,6 @@ public class Variable implements Node {
     private int id;
     private TypeEnum type;
     private String name;
-    private Object value;
     private HashMap<String, Variable> properties;
 
     public Variable(String name) {
@@ -59,22 +58,12 @@ public class Variable implements Node {
         return this.name;
     }
 
-    public void setName(String name) {
-        this.name = name;
-    }
-
-    public void setValue(Object value) { this.value = value; }
-
     public void addProperty(Variable property) {
         this.properties.put(property.getName(), property);
     }
 
     public HashMap<String, Variable> getProperties() {
         return this.properties;
-    }
-
-    public Token getToken() {
-        return new Token(this.name, 200, 0);
     }
 
 }

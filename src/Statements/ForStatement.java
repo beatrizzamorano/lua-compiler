@@ -6,6 +6,7 @@ import Expressions.ASTNode;
 import Expressions.Node;
 import Expressions.ShuntingYardParser;
 
+import java.util.ArrayList;
 import java.util.List;
 
 public class ForStatement implements Statement {
@@ -19,6 +20,7 @@ public class ForStatement implements Statement {
 
     public ForStatement(AssignStatement assignStatement, List<Node> conditionExpression) {
         this.parser = new ShuntingYardParser();
+        this.cycleStatements = new ArrayList<>();
 
         this.assignStatement = assignStatement;
         this.condition = parser.convertInfixNotationToAST(conditionExpression);
