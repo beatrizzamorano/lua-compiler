@@ -5,11 +5,13 @@ import Expressions.ASTEvaluator;
 import Expressions.ASTNode;
 import Expressions.Node;
 import Expressions.ShuntingYardParser;
+import Parsing.ASTParser;
+import Parsing.IParse;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class IfStatement implements Statement {
+public class IfStatement implements Statement, IParse {
 
     private ASTNode firstConditional;
     private List<Statement> statements;
@@ -54,5 +56,37 @@ public class IfStatement implements Statement {
         for (Statement statement : elseStatements) {
             statement.evaluate();
         }
+    }
+
+    @Override
+    public String parse() {
+        String pCode = ASTParser.parseAST(firstConditional);
+        pCode += "FJ ELSE\n";
+
+        for (Statement statement : statements) {
+            if (statement instanceof AssignStatement || statement instanceof IfStatement) {
+                IParse expression = (IParse) statement;
+                pCode += expression.parse();
+            }
+        }
+
+        pCode += "UJP END_IF\n";
+
+        for (ElseIfStatement elseIfStatement : elseIfStatements) {
+            pCode += elseIfStatement.parse();
+        }
+
+        pCode += "LAB ELSE\n";
+
+        for (Statement elseStatement : elseStatements) {
+            if (elseStatement instanceof AssignStatement || elseStatement instanceof IfStatement) {
+                IParse expression = (IParse) elseStatement;
+                pCode += expression.parse();
+            }
+        }
+
+        pCode += "LAB END_IF\n";
+
+        return pCode;
     }
 }

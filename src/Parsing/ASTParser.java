@@ -15,7 +15,7 @@ public class ASTParser {
         String sentence = "";
 
         if (value instanceof ValueNode) {
-            return ((ValueNode) value).getValue();
+            return "LCC " + ((ValueNode) value).getValue() + "\n";
         }
         if (value instanceof BaseOperator) {
             ASTNode leftNode = tree.getLeftASTNode();
@@ -37,6 +37,31 @@ public class ASTParser {
                     break;
                 case "=":
                     operationCode = "LOD";
+                    break;
+                case "and":
+                    operationCode = "AND";
+                    break;
+                case "or":
+                    operationCode = "OR";
+                    break;
+                case "==":
+                    operationCode = "EQU";
+                    break;
+                case "~=":
+                    operationCode = "NEQ";
+                    break;
+                case ">":
+                    operationCode = "GTH";
+                    break;
+                case "<":
+                    operationCode = "MTH";
+                    break;
+                case ">=":
+                    operationCode = "GETH";
+                    break;
+                case "<=":
+                    operationCode = "METH";
+                    break;
             }
 
 
