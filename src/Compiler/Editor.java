@@ -34,6 +34,7 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
 
     public JEditorPane textPane;
     public JEditorPane tokensTextPane;
+    public JEditorPane parsedTextPane;
     private JMenuBar menu;
     private JMenuItem copy, paste, cut;
     public boolean changed = false;
@@ -50,12 +51,17 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
         tokensTextPane.setSize(180, 500);
         add(new JScrollPane(tokensTextPane), BorderLayout.EAST);
         lexicalAnalysis = new LexicalAnalysis();
+        parsedTextPane = new JEditorPane();
+        parsedTextPane.setEnabled(false);
+        parsedTextPane.setSize(180, 500);
+        add(new JScrollPane(parsedTextPane), BorderLayout.WEST);
+
 
         menu = new JMenuBar();
         setJMenuBar(menu);
         buildMenu();
 
-        setSize(500, 500);
+        setSize(800, 800);
         setVisible(true);
         setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     }
@@ -167,6 +173,7 @@ public class Editor extends JFrame implements ActionListener, DocumentListener {
                 tokensTextPane.setText(lexicalAnalysis.printTokens());
                 List<Token> tokens = lexicalAnalysis.getTokens();
                 SyntacticalAnalysis syntacticalAnalysis = new SyntacticalAnalysis(tokens);
+                parsedTextPane.setText(syntacticalAnalysis.getPCode());
             }
 
         }

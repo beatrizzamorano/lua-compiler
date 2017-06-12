@@ -3,6 +3,7 @@ package Compiler;
 import Expressions.Node;
 import Expressions.OperatorFactory;
 import Expressions.ValueNode;
+import Parsing.StatementsParser;
 import Statements.*;
 import javax.swing.*;
 import java.util.*;
@@ -15,6 +16,7 @@ class SyntacticalAnalysis {
     private boolean hasReturnValue;
     private Function function;
     private Queue<String> variableConstruct;
+    String pCode = "";
 
     SyntacticalAnalysis(List<Token> tokens) {
         this.iterator = tokens.listIterator();
@@ -33,12 +35,19 @@ class SyntacticalAnalysis {
             }
         }
 
+        StatementsParser parser = new StatementsParser(block);
+        String parsedCode = parser.parse();
+        pCode = parsedCode;
 
         if (block != null && errorStack.isEmpty()) {
             JOptionPane.showMessageDialog(null, "Sintaxis correcta");
         } else {
             JOptionPane.showMessageDialog(null, errorStack);
         }
+    }
+
+    public String getPCode() {
+        return this.pCode;
     }
 
     private void printError(int error){

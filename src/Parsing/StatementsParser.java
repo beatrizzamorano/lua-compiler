@@ -1,0 +1,29 @@
+package Parsing;
+
+
+import Statements.AssignStatement;
+import Statements.Statement;
+
+import java.util.List;
+
+public class StatementsParser {
+    private List<Statement> statements;
+    private String pCode;
+
+    public StatementsParser(List<Statement> statements) {
+        this.statements = statements;
+        this.pCode = "";
+    }
+
+    public String parse() {
+        for (Statement statement : statements) {
+            if (statement instanceof AssignStatement) {
+                AssignStatement assignStatement = (AssignStatement) statement;
+                pCode += assignStatement.parse();
+            }
+        }
+
+        return this.pCode;
+    }
+
+}

@@ -21,4 +21,8 @@ public class ValueNode implements Node {
         }
     }
 
+    public String getValue() {
+        return this.token.lexeme;
+    }
+
 }
