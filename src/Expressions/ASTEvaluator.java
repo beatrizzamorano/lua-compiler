@@ -12,7 +12,9 @@ public class ASTEvaluator {
         Node value = tree.getValue();
 
         if (value instanceof Variable) {
-            return value.getType();
+            Program program = Program.getInstance();
+            Variable savedVariable = program.getGlobalVariable((Variable) value);
+            return savedVariable.getType();
         }
         else if (value instanceof BaseOperator) {
             switch (((BaseOperator) value).getSymbol()) {
@@ -69,7 +71,10 @@ public class ASTEvaluator {
                     Program program = Program.getInstance();
 
                     if (variableNode instanceof Variable) {
-                        ((Variable) variableNode).setType(typeRight);
+                        Variable mockVariable = (Variable) variableNode;
+                        Variable savedVariable = program.getGlobalVariable(mockVariable);
+                        savedVariable.setType(typeRight);
+
                         return typeRight;
                     } else {
                         throw new SemanthicException(528);

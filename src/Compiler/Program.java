@@ -2,10 +2,7 @@ package Compiler;
 
 import Statements.Statement;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Objects;
+import java.util.*;
 
 public class Program {
     private static Program instance;
@@ -39,18 +36,39 @@ public class Program {
 
         if (instance.globalVariables.containsKey(variable.getName())) {
             Variable currentVariable = instance.globalVariables.get(variable.getName());
-            Variable newProperty = (Variable) variable.getProperties().values().toArray()[0];
+            HashMap<String, Variable> properties = variable.getProperties();
 
-            while (currentVariable.getProperties().containsKey(newProperty.getName()) && !newProperty.getProperties().isEmpty()) {
-                currentVariable = currentVariable.getProperties().get(newProperty.getName());
-                newProperty = (Variable) newProperty.getProperties().values().toArray()[0];
+            if (!properties.isEmpty()) {
+                Variable newProperty = (Variable) variable.getProperties().values().toArray()[0];
+
+                while (currentVariable.getProperties().containsKey(newProperty.getName()) && !newProperty.getProperties().isEmpty()) {
+                    currentVariable = currentVariable.getProperties().get(newProperty.getName());
+                    newProperty = (Variable) newProperty.getProperties().values().toArray()[0];
+                }
+
+                currentVariable.addProperty(newProperty);
             }
-
-            currentVariable.addProperty(newProperty);
-
-        } else {
+        }
+        else {
+            if (!variable.getProperties().isEmpty()) {
+                variable.setType(TypeEnum.TABLE);
+            }
             instance.globalVariables.put(variable.getName(), variable);
         }
+    }
+
+    public Variable getGlobalVariable(Variable variable) {
+        Variable currentVariable = instance.globalVariables.get(variable.getName());
+        Variable propertyToGet = currentVariable;
+
+        if (propertyToGet == null) return null;
+
+        while (!variable.getProperties().isEmpty() && !currentVariable.getProperties().isEmpty() && currentVariable.getProperties().containsKey(((Variable) variable.getProperties().values().toArray()[0]).getName())) {
+            propertyToGet = currentVariable.getProperties().get(((Variable) variable.getProperties().values().toArray()[0]).getName());
+            variable = (Variable) variable.getProperties().values().toArray()[0];
+        }
+
+        return propertyToGet;
     }
 
     public void addFunction(Function function) throws SemanthicException {
