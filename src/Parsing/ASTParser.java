@@ -5,6 +5,7 @@ import Expressions.BaseOperator;
 import Expressions.Node;
 import Compiler.*;
 import Expressions.ValueNode;
+import jdk.internal.org.objectweb.asm.tree.analysis.Value;
 
 import java.util.Objects;
 
@@ -84,6 +85,36 @@ public class ASTParser {
                 }
                 else if (rightNode.getValue() instanceof BaseOperator && leftNode.getValue() instanceof  BaseOperator) {
                     return parseAST(leftNode) + parseAST(rightNode);
+                }
+                else if (leftNode.getValue() instanceof Variable && rightNode.getValue() instanceof ValueNode) {
+                    Variable left = (Variable) leftNode.getValue();
+                    ValueNode right = (ValueNode) rightNode.getValue();
+
+                    sentence += "LDA " + left.getName() + "\n";
+                    sentence += "LCC " + right.getValue() + "\n";
+
+                    sentence += operationCode + "\n";
+                    return sentence;
+                }
+                else if (leftNode.getValue() instanceof ValueNode && rightNode.getValue() instanceof Variable) {
+                    ValueNode left = (ValueNode) leftNode.getValue();
+                    Variable right = (Variable) rightNode.getValue();
+
+                    sentence += "LCC " + left.getValue() + "\n";
+                    sentence += "LDA " + right.getName() + "\n";
+
+                    sentence += operationCode + "\n";
+                    return sentence;
+                }
+                else if (leftNode.getValue() instanceof Variable && rightNode.getValue() instanceof  Variable) {
+                    Variable left = (Variable) leftNode.getValue();
+                    Variable right = (Variable) rightNode.getValue();
+
+                    sentence += "LCC " + left.getName() + "\n";
+                    sentence += "LDA " + right.getName() + "\n";
+
+                    sentence += operationCode + "\n";
+                    return sentence;
                 }
                 else if (leftNode.getValue() instanceof BaseOperator) {
                     ValueNode right = (ValueNode) rightNode.getValue();

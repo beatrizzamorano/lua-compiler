@@ -34,7 +34,7 @@ public class AssignStatement implements Statement, IParse {
     }
 
     @Override
-    public String parse() {
+    public String parse(int index) {
         String parsedExpression = ASTParser.parseAST(syntaxTree);
         parsedExpression += "STO\n";
         return parsedExpression;

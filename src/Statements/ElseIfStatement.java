@@ -16,6 +16,8 @@ public class ElseIfStatement implements Statement, IParse {
     List<Statement> statements;
     ShuntingYardParser parser;
     ASTEvaluator evaluator = new ASTEvaluator();
+    int ifIndex = 0;
+    int elseIfIndex = 0;
 
     public ElseIfStatement(List<Node> expression, List<Statement> statements) {
         this.parser = new ShuntingYardParser();
@@ -34,29 +36,33 @@ public class ElseIfStatement implements Statement, IParse {
         }
     }
 
+    public void addIfIndex(int index) {
+        this.ifIndex = index;
+    }
+
     @Override
-    public String parse() {
+    public String parse(int index) {
         String pCode = "";
 
-        pCode += "LAB NEXT_ELSE_IF\n";
+        pCode += "LAB ELSE_IF_" + ifIndex + "_" + elseIfIndex + "\n";
         pCode += ASTParser.parseAST(condition);
 
         for (int i = 0; i < statements.size(); i++) {
             if (i < statements.size() - 1) {
-                pCode += "FJ NEXT_ELSE_IF\n";
+                pCode += "FJ ELSE_IF_" + ifIndex + "_" + elseIfIndex + "\n";
             } else if (i == statements.size() - 1) {
-                pCode += "FJ ELSE\n";
+                pCode += "FJ ELSE_" + ifIndex + "\n";
             }
 
             Statement statement = statements.get(i);
 
-            if (statement instanceof AssignStatement || statement instanceof IfStatement) {
+            if (statement instanceof IParse) {
                 IParse expression = (IParse) statement;
-                pCode += expression.parse();
+                pCode += expression.parse(index);
             }
         }
 
-        pCode += "UJP END_IF\n";
+        pCode += "UJP END_IF_" + ifIndex + "\n";
 
         return pCode;
     }

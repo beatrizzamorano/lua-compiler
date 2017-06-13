@@ -3,5 +3,5 @@ package Parsing;
 
 public interface IParse {
 
-    String parse();
+    String parse(int index);
 }
