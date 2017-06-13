@@ -23,7 +23,13 @@ class SyntacticalAnalysis {
         program = Program.newInstance();
 
         getNextToken();
-        List<Statement> block = isBlock();
+        List<Statement> block = null;
+
+        try {
+            block = isBlock();
+        } catch (SemanthicException ex) {
+            printError(ex.getErrorNumber());
+        }
 
         if (block != null) {
             for (Statement statement : block) {
@@ -167,12 +173,12 @@ class SyntacticalAnalysis {
     }
 
     //block ::= chunk
-    private List<Statement> isBlock() {
+    private List<Statement> isBlock() throws SemanthicException {
         return isChunk();
     }
 
     //chunk ::= {stat [`;´]} [laststat [`;´]]
-    private List<Statement> isChunk(){
+    private List<Statement> isChunk() throws SemanthicException {
         List<Statement> statements = new ArrayList<>();
 
         try {
@@ -203,7 +209,7 @@ class SyntacticalAnalysis {
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
 		 function funcname funcbody |
 		 local namelist [`=´ explist] */
-    private Statement isStat(){
+    private Statement isStat() throws SemanthicException {
         List<Variable> variables = isVarList();
 
         if (variables != null && variables.size() > 0) {
@@ -217,7 +223,7 @@ class SyntacticalAnalysis {
             }
 
             if (variables.size() > 1) {
-                if (isAssign()) {
+                if (isAssign() != null) {
                     List<List<Node>> expressions = isExpList();
                     if (expressions != null) {
                         if (variables.size() != expressions.size()) return null;
@@ -243,7 +249,7 @@ class SyntacticalAnalysis {
 //                        }
 //                    }
 //                }
-                if (isAssign()) {
+                if (isAssign() != null) {
                     List<List<Node>> expressions = isExpList();
                     if (expressions != null) {
                         return new AssignStatement(variables.get(0), expressions.get(0));
@@ -305,7 +311,7 @@ class SyntacticalAnalysis {
             List<String> names = isNameList();
 
             if (names != null && names.size() == 1) {
-                if (isAssign()) {
+                if (isAssign() != null) {
                     List<Node> assignExpression = isExp();
 
                     if (assignExpression != null) {
@@ -313,31 +319,39 @@ class SyntacticalAnalysis {
                             List<Node> conditionExpression = isExp();
 
                             if (conditionExpression != null) {
-                                AssignStatement assignStatement = new AssignStatement(new Variable(names.get(0)), assignExpression);
+                                Variable variable = new Variable(names.get(0));
+                                AssignStatement assignStatement = new AssignStatement(variable, assignExpression);
+
+                                program.addGlobalVariable(variable);
                                 ForStatement forStatement = new ForStatement(assignStatement, conditionExpression);
 
                                 if (isComma()) {
-                                    List<Node> cycleExpression = isExp();
+                                    List<String> names2 = isNameList();
+                                    if (names2 != null && names2.size() == 1) {
+                                        if (isAssign() != null) {
+                                            List<Node> assignExpression2 = isExp();
+                                            Variable variable2 = new Variable(names.get(0));
+                                            program.addGlobalVariable(variable2);
+                                            forStatement.setCycleExpression(new AssignStatement(variable2, assignExpression2));
 
-                                    if (cycleExpression != null) {
-                                        forStatement.setCycleExpression(cycleExpression);
+                                            if (isDo()) {
+                                                List<Statement> statements = isBlock();
 
-                                        if (isDo()) {
-                                            List<Statement> statements = isBlock();
+                                                if (statements != null) {
+                                                    forStatement.setCycleStatements(statements);
 
-                                            if (statements != null) {
-                                                forStatement.setCycleStatements(statements);
-
-                                                if (isEnd()) {
-                                                    return forStatement;
-                                                } else {
-                                                    printError(513);
+                                                    if (isEnd()) {
+                                                        return forStatement;
+                                                    } else {
+                                                        printError(513);
+                                                    }
                                                 }
+                                            } else {
+                                                printError(515);
                                             }
-                                        } else {
-                                            printError(515);
                                         }
                                     }
+
                                 } else {
                                     printError(515);
                                 }
@@ -381,7 +395,7 @@ class SyntacticalAnalysis {
                     }
                 }
 
-                if (isAssign()) {
+                if (isAssign() != null) {
                     List<List<Node>> expressions = isExpList();
                     if (expressions == null || expressions.size() != variables.size()) return null;
 
@@ -796,7 +810,7 @@ class SyntacticalAnalysis {
     }
 
     //function ::= function funcbody
-    private boolean isFunction(){
+    private boolean isFunction() throws SemanthicException{
         if(isFunctionKeyword()){
             if(isFuncBody()) {
                 return true;
@@ -813,7 +827,7 @@ class SyntacticalAnalysis {
     }
 
     //funcbody ::= `(´ [parlist] `)´ block end
-    private boolean isFuncBody() {
+    private boolean isFuncBody() throws SemanthicException {
         function = new Function();
         Token functionName = peekPreviousToken();
         function.setName(functionName.lexeme);
@@ -953,7 +967,7 @@ class SyntacticalAnalysis {
         if (isLeftBracket()){
             if (isExp() != null){
                 if (isRightBracket()){
-                    if (isAssign()){
+                    if (isAssign() != null){
                         if(isExp() != null) {
                             return true;
                         }
@@ -967,7 +981,7 @@ class SyntacticalAnalysis {
             }
         } else if (isName()) {
             getNextToken();
-            if (isAssign()) {
+            if (isAssign() != null) {
                 if (isExp() != null) {
                     return true;
                 }
@@ -1009,10 +1023,10 @@ class SyntacticalAnalysis {
         return true;
     }
 
-    private boolean isAssign() {
-        if (currentToken.id != 115) return false;
+    private Token isAssign() {
+        if (currentToken.id != 115) return null;
         getNextToken();
-        return true;
+        return peekPreviousToken();
     }
 
     private boolean isRightBracket() {

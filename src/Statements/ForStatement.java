@@ -5,15 +5,17 @@ import Expressions.ASTEvaluator;
 import Expressions.ASTNode;
 import Expressions.Node;
 import Expressions.ShuntingYardParser;
+import Parsing.ASTParser;
+import Parsing.IParse;
 
 import java.util.ArrayList;
 import java.util.List;
 
-public class ForStatement implements Statement {
+public class ForStatement implements Statement, IParse {
 
     private AssignStatement assignStatement;
     private ASTNode condition;
-    private ASTNode cycleExpression;
+    private AssignStatement cycleExpression;
     private List<Statement> cycleStatements;
     private ShuntingYardParser parser;
     private ASTEvaluator evaluator = new ASTEvaluator();
@@ -26,8 +28,8 @@ public class ForStatement implements Statement {
         this.condition = parser.convertInfixNotationToAST(conditionExpression);
     }
 
-    public void setCycleExpression(List<Node> cycleExpression) {
-        this.cycleExpression = parser.convertInfixNotationToAST(cycleExpression);
+    public void setCycleExpression(AssignStatement cycleExpression) {
+        this.cycleExpression = cycleExpression;
     }
 
     public void setCycleStatements(List<Statement> statements) {
@@ -44,5 +46,29 @@ public class ForStatement implements Statement {
         for (Statement cycleStatement : cycleStatements) {
             cycleStatement.evaluate();
         }
+    }
+
+    @Override
+    public String parse() {
+        String pCode = "";
+
+        pCode += assignStatement.parse();
+        pCode += "LAB FOR_CONDITION\n";
+        pCode += ASTParser.parseAST(condition);
+        pCode += "FJ END_FOR\n";
+
+        for (Statement statement : cycleStatements) {
+            if (statement instanceof AssignStatement || statement instanceof IfStatement) {
+                IParse sentenceToParse = (IParse) statement;
+                pCode += sentenceToParse.parse();
+            }
+        }
+
+        pCode += cycleExpression.parse();
+
+        pCode += "UJP FOR_CONDITION\n";
+        pCode += "LAB END_FOR\n";
+
+        return pCode;
     }
 }

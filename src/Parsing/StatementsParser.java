@@ -17,13 +17,12 @@ public class StatementsParser {
     }
 
     public String parse() {
+        if (statements == null) return "";
         for (Statement statement : statements) {
-            if (statement instanceof AssignStatement || statement instanceof IfStatement) {
+            if (statement instanceof IParse) {
                 IParse sentenceToParse = (IParse) statement;
                 pCode += sentenceToParse.parse();
             }
-
-
         }
 
         return this.pCode;
