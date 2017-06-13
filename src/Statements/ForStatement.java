@@ -49,25 +49,25 @@ public class ForStatement implements Statement, IParse {
     }
 
     @Override
-    public String parse() {
+    public String parse(int index) {
         String pCode = "";
 
-        pCode += assignStatement.parse();
-        pCode += "LAB FOR_CONDITION\n";
+        pCode += assignStatement.parse(index);
+        pCode += "LAB FOR_CONDITION_" + index + "\n";
         pCode += ASTParser.parseAST(condition);
-        pCode += "FJ END_FOR\n";
+        pCode += "FJ END_FOR_" + index + "\n";
 
         for (Statement statement : cycleStatements) {
-            if (statement instanceof AssignStatement || statement instanceof IfStatement) {
+            if (statement instanceof IParse) {
                 IParse sentenceToParse = (IParse) statement;
-                pCode += sentenceToParse.parse();
+                pCode += sentenceToParse.parse(index);
             }
         }
 
-        pCode += cycleExpression.parse();
+        pCode += cycleExpression.parse(index);
 
-        pCode += "UJP FOR_CONDITION\n";
-        pCode += "LAB END_FOR\n";
+        pCode += "UJP FOR_CONDITION_" + index + "\n";
+        pCode += "LAB END_FOR_" + index + "\n";
 
         return pCode;
     }
