@@ -14,8 +14,10 @@ public class AssignStatement implements Statement, IParse {
     ASTNode syntaxTree;
     ShuntingYardParser parser;
     ASTEvaluator evaluator = new ASTEvaluator();
+    Variable variable;
 
     public AssignStatement(Variable variable, List<Node> expression) {
+        this.variable = variable;
         parser = new ShuntingYardParser();
         OperatorFactory operatorFactory = new OperatorFactory();
         BaseOperator assignOperator = operatorFactory.getOperator(new Token("=", 115, 0));
@@ -26,6 +28,10 @@ public class AssignStatement implements Statement, IParse {
         assign.addAll(expression);
 
         this.syntaxTree = parser.convertInfixNotationToAST(assign);
+    }
+
+    public String getVariableName() {
+        return this.variable.getName();
     }
 
     @Override

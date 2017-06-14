@@ -5,20 +5,19 @@ import Statements.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by beatriz zamorano on 21/03/17.
  */
 public class Function {
     private HashMap<Integer, Parameter> parameters;
-    private HashMap<Integer, Variable> localVariables;
     private boolean hasReturnValue;
     private String name;
     private List<Statement> statements;
 
     public Function() {
         this.parameters = new HashMap<>();
-        this.localVariables = new HashMap<>();
         this.hasReturnValue = false;
         this.statements = new ArrayList<>();
     }
@@ -35,10 +34,6 @@ public class Function {
         this.name = name;
     }
 
-    public void addLocalVariable(Variable variable) {
-        this.localVariables.put(variable.hashCode(), variable);
-    }
-
     public void addParameters(List<Parameter> params) {
         for (Parameter param : params) {
             this.parameters.put(param.hashCode(), param);
@@ -47,5 +42,13 @@ public class Function {
 
     public void setStatements(List<Statement> statements) {
         this.statements = statements;
+    }
+
+    public List<Statement> getStatements() {
+        return this.statements;
+    }
+
+    public List<String> getParametersNames() {
+        return parameters.values().stream().map(p -> p.getName()).collect(Collectors.toList());
     }
 }
