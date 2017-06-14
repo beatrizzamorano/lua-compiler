@@ -26,7 +26,7 @@ class SyntacticalAnalysis {
         List<Statement> block = null;
 
         try {
-            block = isBlock();
+            block = isBlock(0, 1);
         } catch (SemanthicException ex) {
             printError(ex.getErrorNumber());
         }
@@ -173,25 +173,26 @@ class SyntacticalAnalysis {
     }
 
     //block ::= chunk
-    private List<Statement> isBlock() throws SemanthicException {
-        return isChunk();
+    private List<Statement> isBlock(int scope, int parentScope) throws SemanthicException {
+        scope++;
+        return isChunk(scope, parentScope);
     }
 
     //chunk ::= {stat [`;´]} [laststat [`;´]]
-    private List<Statement> isChunk() throws SemanthicException {
+    private List<Statement> isChunk(int scope, int parentScope) throws SemanthicException {
         List<Statement> statements = new ArrayList<>();
 
         try {
 
-            Statement statement = isStat();
+            Statement statement = isStat(scope, parentScope);
             while (statement != null) {
                 statements.add(statement);
                 isSemicolon();
 
-                statement = isStat();
+                statement = isStat(scope, parentScope);
             }
 
-            if (isLastStat()) {
+            if (isLastStat(scope)) {
                 isSemicolon();
             }
 
@@ -209,8 +210,8 @@ class SyntacticalAnalysis {
 		 for Name `=´ exp `,´ exp [`,´ exp] do block end |
 		 function funcname funcbody |
 		 local namelist [`=´ explist] */
-    private Statement isStat() throws SemanthicException {
-        List<Variable> variables = isVarList();
+    private Statement isStat(int scope, int parentScope) throws SemanthicException {
+        List<Variable> variables = isVarList(scope);
 
         if (variables != null && variables.size() > 0) {
             for (Variable variable : variables) {
@@ -224,7 +225,7 @@ class SyntacticalAnalysis {
 
             if (variables.size() > 1) {
                 if (isAssign() != null) {
-                    List<List<Node>> expressions = isExpList();
+                    List<List<Node>> expressions = isExpList(scope);
                     if (expressions != null) {
                         if (variables.size() != expressions.size()) return null;
 
@@ -235,7 +236,7 @@ class SyntacticalAnalysis {
                 }
             } else if (variables.size() == 1) {
 //                if (isArgs()) {
-//                    if (isFunctionCallTail()) {
+//                    if (isFunctionCallTail(scope)) {
 //                        return true;
 //                    }
 //                }
@@ -243,14 +244,14 @@ class SyntacticalAnalysis {
 //                    if (isName()) {
 //                        getNextToken();
 //                        if (isArgs()) {
-//                            if (isFunctionCallTail()) {
+//                            if (isFunctionCallTail(scope)) {
 //                                return true;
 //                            }
 //                        }
 //                    }
 //                }
                 if (isAssign() != null) {
-                    List<List<Node>> expressions = isExpList();
+                    List<List<Node>> expressions = isExpList(scope);
                     if (expressions != null) {
                         return new AssignStatement(variables.get(0), expressions.get(0));
                     }
@@ -258,25 +259,25 @@ class SyntacticalAnalysis {
 
                 return new GenericStatement();
             }
-        } else if (isFunctionCall()) {
+        } else if (isFunctionCall(scope)) {
             return new GenericStatement();
         }
         else if (isIf()) {
-            List<Node> expression = isExp();
+            List<Node> expression = isExp(scope);
             if (expression != null) {
                 IfStatement ifStatement = new IfStatement(expression);
 
                 if (isThen()) {
-                    List<Statement> firstConditionalStatements = isBlock();
+                    List<Statement> firstConditionalStatements = isBlock(scope, scope);
                     if (firstConditionalStatements != null) {
                         ifStatement.setStatements(firstConditionalStatements);
 
                         while (isElseIf()) {
-                            List<Node> elseIfExpression = isExp();
+                            List<Node> elseIfExpression = isExp(scope);
 
                             if (elseIfExpression != null) {
                                 if (isThen()) {
-                                    List<Statement> block = isBlock();
+                                    List<Statement> block = isBlock(scope, scope);
                                     if (block != null) {
                                         ifStatement.addElseIfStatement(new ElseIfStatement(elseIfExpression, block));
                                     } else {
@@ -288,7 +289,7 @@ class SyntacticalAnalysis {
                             }
                         }
                         if (isElse()) {
-                            List<Statement> block = isBlock();
+                            List<Statement> block = isBlock(scope, scope);
                             if (block != null) {
                                 ifStatement.setElseStatements(block);
                             } else {
@@ -312,14 +313,14 @@ class SyntacticalAnalysis {
 
             if (names != null && names.size() == 1) {
                 if (isAssign() != null) {
-                    List<Node> assignExpression = isExp();
+                    List<Node> assignExpression = isExp(scope);
 
                     if (assignExpression != null) {
                         if (isComma()) {
-                            List<Node> conditionExpression = isExp();
+                            List<Node> conditionExpression = isExp(scope);
 
                             if (conditionExpression != null) {
-                                Variable variable = new Variable(names.get(0));
+                                Variable variable = new Variable(names.get(0), scope);
                                 AssignStatement assignStatement = new AssignStatement(variable, assignExpression);
 
                                 program.addGlobalVariable(variable);
@@ -329,13 +330,13 @@ class SyntacticalAnalysis {
                                     List<String> names2 = isNameList();
                                     if (names2 != null && names2.size() == 1) {
                                         if (isAssign() != null) {
-                                            List<Node> assignExpression2 = isExp();
-                                            Variable variable2 = new Variable(names.get(0));
+                                            List<Node> assignExpression2 = isExp(scope);
+                                            Variable variable2 = new Variable(names.get(0), scope);
                                             program.addGlobalVariable(variable2);
                                             forStatement.setCycleExpression(new AssignStatement(variable2, assignExpression2));
 
                                             if (isDo()) {
-                                                List<Statement> statements = isBlock();
+                                                List<Statement> statements = isBlock(scope, scope);
 
                                                 if (statements != null) {
                                                     forStatement.setCycleStatements(statements);
@@ -372,7 +373,7 @@ class SyntacticalAnalysis {
         }
         else if (isFunctionKeyword()) {
             if (isFuncName()) {
-                if (isFuncBody()) {
+                if (isFuncBody(scope, parentScope)) {
                     return new GenericStatement();
                 }
             }
@@ -383,11 +384,11 @@ class SyntacticalAnalysis {
                 variables = new ArrayList<Variable>();
 
                 for (String name : nameList) {
-                    Variable variable = new Variable(name);
+                    Variable variable = new Variable(name, scope);
                     variables.add(variable);
 
                     try {
-                        program.addLocalVariable(function.getName(), variable);
+                        program.addLocalVariable(parentScope, scope, variable);
 
                     } catch (SemanthicException ex) {
                         printError(ex.getErrorNumber());
@@ -396,7 +397,7 @@ class SyntacticalAnalysis {
                 }
 
                 if (isAssign() != null) {
-                    List<List<Node>> expressions = isExpList();
+                    List<List<Node>> expressions = isExpList(scope);
                     if (expressions == null || expressions.size() != variables.size()) return null;
 
                     return new GroupAssignStatement(variables, expressions);
@@ -412,9 +413,9 @@ class SyntacticalAnalysis {
     }
 
     //laststat ::= return [explist] | break
-    private boolean isLastStat() {
+    private boolean isLastStat(int scope) {
         if (isReturn()) {
-            List<List<Node>> expressions = isExpList();
+            List<List<Node>> expressions = isExpList(scope);
             if (expressions != null) {
                 this.hasReturnValue = true;
                 return true;
@@ -438,26 +439,26 @@ class SyntacticalAnalysis {
     }
 
     //var ::=  Name | prefixexp `[´ exp `]´ | prefixexp `.´ Name
-    private Variable isVar(){
+    private Variable isVar(int scope){
         if(isName()) {
             variableConstruct = new ArrayDeque<>();
             String variableName = currentToken.lexeme;
             variableConstruct.add(variableName);
 
             getNextToken();
-            if(isVarTail()) {
-                Variable variable = new Variable(variableConstruct);
+            if(isVarTail(scope)) {
+                Variable variable = new Variable(variableConstruct, scope);
                 variableConstruct = null;
                 return variable;
             }
         }
-        else if(isPrefixExp().size() > 0) {
+        else if(isPrefixExp(scope).size() > 0) {
             variableConstruct = new ArrayDeque<>();
             if(isLeftBracket()) {
-                if(isExp() != null){
+                if(isExp(scope) != null){
                     if(isRightBracket()){
-                        if(isVarTail()) {
-                            Variable variable = new Variable(variableConstruct);
+                        if(isVarTail(scope)) {
+                            Variable variable = new Variable(variableConstruct,scope);
                             variableConstruct = null;
                             return variable;
                         }
@@ -469,8 +470,8 @@ class SyntacticalAnalysis {
                 if(isName()){
                     variableConstruct.add(currentToken.lexeme);
                     getNextToken();
-                    if(isVarTail()) {
-                        Variable variable = new Variable(variableConstruct);
+                    if(isVarTail(scope)) {
+                        Variable variable = new Variable(variableConstruct, scope);
                         variableConstruct = null;
                         return variable;
                     }
@@ -482,18 +483,18 @@ class SyntacticalAnalysis {
             }
         }
         else if(isLeftParenthesis() != null) {
-            if (isExp() != null) {
+            if (isExp(scope) != null) {
                 if (isRightParenthesis() != null) {
-                    if (isArgs()) {
-                        if (isFunctionCallTail()) {
+                    if (isArgs(scope)) {
+                        if (isFunctionCallTail(scope)) {
                             return new Variable(TypeEnum.VOID);
                         }
                     }
                     else if (isColon()) {
                         if (isName()) {
                             getNextToken();
-                            if (isArgs()) {
-                                if (isFunctionCallTail()) {
+                            if (isArgs(scope)) {
+                                if (isFunctionCallTail(scope)) {
                                     return new Variable(TypeEnum.VOID);
                                 }
                             }
@@ -512,11 +513,11 @@ class SyntacticalAnalysis {
         return null;
     }
 
-    private boolean isVarTail() {
+    private boolean isVarTail(int scope) {
         if (isLeftBracket()) {
-            if (isExp() != null) {
+            if (isExp(scope) != null) {
                 if (isRightBracket()) {
-                    if (isVarTail()) {
+                    if (isVarTail(scope)) {
                         return true;
                     }
                 } else {
@@ -528,24 +529,24 @@ class SyntacticalAnalysis {
             if (isName()) {
                 variableConstruct.add(currentToken.lexeme);
                 getNextToken();
-                if (isVarTail()) {
+                if (isVarTail(scope)) {
                     return true;
                 }
             } else {
                 printError(511);
             }
-        } else if (isArgs()) {
-            if (isFunctionCallTail()) {
-                if (isVarTail()) {
+        } else if (isArgs(scope)) {
+            if (isFunctionCallTail(scope)) {
+                if (isVarTail(scope)) {
                     return true;
                 }
             }
         } else if (isColon()) {
             if (isName()) {
                 getNextToken();
-                if (isArgs()) {
-                    if (isFunctionCallTail()) {
-                        if (isVarTail()) {
+                if (isArgs(scope)) {
+                    if (isFunctionCallTail(scope)) {
+                        if (isVarTail(scope)) {
                             return true;
                         }
                     }
@@ -561,15 +562,15 @@ class SyntacticalAnalysis {
     }
 
     //explist ::= {exp `,´} exp
-    private List<List<Node>> isExpList() {
+    private List<List<Node>> isExpList(int scope) {
         List<List<Node>> expressions = new ArrayList<>();
-        List<Node> expression = isExp();
+        List<Node> expression = isExp(scope);
 
         if (expression.size() > 0){
             expressions.add(expression);
 
             while(isComma()){
-                expression = isExp();
+                expression = isExp(scope);
                 if (expression.size() > 0) {
                     expressions.add(expression);
                 } else {
@@ -584,64 +585,64 @@ class SyntacticalAnalysis {
 
     /*exp ::=  nil | false | true | Number | String | function |
 		 prefixexp | tableconstructor | exp binop exp | unop exp */
-    private List<Node> isExp() {
-        return isExp(new ArrayList<>());
+    private List<Node> isExp(int scope) {
+        return isExp(new ArrayList<>(), scope);
     }
 
-    private List<Node> isExp(List<Node> currentExpression) {
+    private List<Node> isExp(List<Node> currentExpression, int scope) {
         Token token;
 
         token= isNil();
         if (token != null) {
             currentExpression.add(new ValueNode(token));
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
         }
 
         token = isFalse();
         if (token != null) {
             currentExpression.add(new ValueNode(token));
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
         }
 
         token = isTrue();
         if (token != null) {
             currentExpression.add(new ValueNode(token));
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
         }
 
         token = isNumber();
         if (token != null) {
             currentExpression.add(new ValueNode(token));
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
         }
 
         token = isString();
         if (token != null) {
             currentExpression.add(new ValueNode(token));
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
         }
 
         token = isUnop();
         if (token != null) {
             currentExpression.add(new ValueNode(token));
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
         }
 
-        List<Node> tokens = isPrefixExp(currentExpression);
+        List<Node> tokens = isPrefixExp(currentExpression, scope);
         if (currentExpression.size() < tokens.size()) {
-            return isExpTail(tokens);
+            return isExpTail(tokens, scope);
         }
 
-        Variable variable = isVar();
+        Variable variable = isVar(scope);
         if (variable != null) {
-            if (isArgs()) {
-                if (isFunctionCallTail()) {
+            if (isArgs(scope)) {
+                if (isFunctionCallTail(scope)) {
 
                 }
             } else if (isColon()) {
                 if (isName()) {
                     getNextToken();
-                    if (isFunctionCallTail()) {
+                    if (isFunctionCallTail(scope)) {
 
                     }
                 } else {
@@ -651,26 +652,26 @@ class SyntacticalAnalysis {
                 currentExpression.add(variable);
             }
 
-            return isExpTail(currentExpression);
+            return isExpTail(currentExpression, scope);
 
-        } else if (isFunctionCall()) {
-            return isExpTail(currentExpression);
+        } else if (isFunctionCall(scope)) {
+            return isExpTail(currentExpression, scope);
         }
 
         return currentExpression;
     }
 
-    private List<Node> isExpTail(List<Node> currentExpression) {
+    private List<Node> isExpTail(List<Node> currentExpression, int scope) {
         Token binop = isBinop();
         if (binop != null) {
             OperatorFactory operatorFactory = new OperatorFactory();
 
             currentExpression.add(operatorFactory.getOperator(binop));
             int originalSize = currentExpression.size();
-            currentExpression = isExp(currentExpression);
+            currentExpression = isExp(currentExpression, scope);
 
             if (originalSize < currentExpression.size()) {
-                return isExpTail(currentExpression);
+                return isExpTail(currentExpression, scope);
             }
         }
 
@@ -678,14 +679,14 @@ class SyntacticalAnalysis {
     }
 
     //varlist ::= var {`,´ var}
-    private List<Variable> isVarList(){
+    private List<Variable> isVarList(int scope){
         ArrayList<Variable> variables = new ArrayList<>();
 
-        Variable variable = isVar();
+        Variable variable = isVar(scope);
         if(variable != null){
                 variables.add(variable);
             while(isComma()){
-                variable = isVar();
+                variable = isVar(scope);
                 variables.add(variable);
             }
         }
@@ -694,10 +695,10 @@ class SyntacticalAnalysis {
     }
 
     //prefixexp ::= var | functioncall | `(´ exp `)´
-    private List<Node> isPrefixExp(List<Node> currentExpression) {
+    private List<Node> isPrefixExp(List<Node> currentExpression, int scope) {
         if (isLeftParenthesis() != null) {
             int originalSize = currentExpression.size();
-            currentExpression = isExp(currentExpression);
+            currentExpression = isExp(currentExpression, scope);
             if (originalSize < currentExpression.size()) {
                 if (isRightParenthesis() != null) {
                     return currentExpression;
@@ -710,22 +711,22 @@ class SyntacticalAnalysis {
         return currentExpression;
     }
 
-    private List<Node> isPrefixExp() {
-        return isPrefixExp(new ArrayList<>());
+    private List<Node> isPrefixExp(int scope) {
+        return isPrefixExp(new ArrayList<>(), scope);
     }
 
     //functioncall ::=  prefixexp args | prefixexp `:´ Name args
-    private boolean isFunctionCall(){
-        if (isVar() != null) {
-            if (isArgs()) {
-                if (isFunctionCallTail()) {
+    private boolean isFunctionCall(int scope){
+        if (isVar(scope) != null) {
+            if (isArgs(scope)) {
+                if (isFunctionCallTail(scope)) {
                     return true;
                 }
             } else if (isColon()) {
                 if (isName()) {
                     getNextToken();
-                    if (isArgs()) {
-                        if (isFunctionCallTail()) {
+                    if (isArgs(scope)) {
+                        if (isFunctionCallTail(scope)) {
                             return true;
                         }
                     }
@@ -734,17 +735,17 @@ class SyntacticalAnalysis {
                 printError(508);
             }
         } else if (isLeftParenthesis() != null) {
-            if (isExp() != null) {
+            if (isExp(scope) != null) {
                 if (isRightParenthesis() != null) {
-                    if (isArgs()) {
-                        if (isFunctionCallTail()) {
+                    if (isArgs(scope)) {
+                        if (isFunctionCallTail(scope)) {
                             return true;
                         }
                     } else if (isColon()) {
                         if (isName()) {
                             getNextToken();
-                            if (isArgs()) {
-                                if (isFunctionCallTail()) {
+                            if (isArgs(scope)) {
+                                if (isFunctionCallTail(scope)) {
                                     return true;
                                 }
                             }
@@ -761,16 +762,16 @@ class SyntacticalAnalysis {
         return false;
     }
 
-    private boolean isFunctionCallTail() {
-        if (isArgs()) {
-            if (isFunctionCallTail()) {
+    private boolean isFunctionCallTail(int scope) {
+        if (isArgs(scope)) {
+            if (isFunctionCallTail(scope)) {
                 return true;
             }
         } else if (isColon()) {
             if (isName()) {
                 getNextToken();
-                if (isArgs()) {
-                    if (isFunctionCallTail()) {
+                if (isArgs(scope)) {
+                    if (isFunctionCallTail(scope)) {
                         return true;
                     }
                 }
@@ -785,9 +786,9 @@ class SyntacticalAnalysis {
     }
 
     //args ::=  `(´ [explist] `)´ | tableconstructor | String
-    private boolean isArgs() {
+    private boolean isArgs(int scope) {
         if (isLeftParenthesis() != null) {
-            List<List<Node>> expressions = isExpList();
+            List<List<Node>> expressions = isExpList(scope);
 
             if (expressions != null) {
                 if (isRightParenthesis() != null) {
@@ -800,21 +801,10 @@ class SyntacticalAnalysis {
             } else {
                 printError(507);
             }
-        } else if (isTableConstructor()) {
+        } else if (isTableConstructor(scope)) {
             return true;
         } else if (isString() != null) {
             return true;
-        }
-
-        return false;
-    }
-
-    //function ::= function funcbody
-    private boolean isFunction() throws SemanthicException{
-        if(isFunctionKeyword()){
-            if(isFuncBody()) {
-                return true;
-            }
         }
 
         return false;
@@ -827,7 +817,7 @@ class SyntacticalAnalysis {
     }
 
     //funcbody ::= `(´ [parlist] `)´ block end
-    private boolean isFuncBody() throws SemanthicException {
+    private boolean isFuncBody(int scope, int parentScope) throws SemanthicException {
         function = new Function();
         Token functionName = peekPreviousToken();
         function.setName(functionName.lexeme);
@@ -848,7 +838,7 @@ class SyntacticalAnalysis {
                 program.updateFunction(function);
 
                 if (isRightParenthesis() != null) {
-                    List<Statement> statements = isBlock();
+                    List<Statement> statements = isBlock(scope, scope);
 
                     if (statements != null) {
                         function.setHasReturnValue(this.hasReturnValue);
@@ -865,7 +855,7 @@ class SyntacticalAnalysis {
                     }
                 }
             } else if (isRightParenthesis() != null) {
-                List<Statement> statements = isBlock();
+                List<Statement> statements = isBlock(scope, scope);
 
                 if (statements != null) {
                     function.setHasReturnValue(this.hasReturnValue);
@@ -931,9 +921,9 @@ class SyntacticalAnalysis {
 
 
     //tableconstructor ::= `{´ [fieldlist] `}´
-    private boolean isTableConstructor(){
+    private boolean isTableConstructor(int scope){
         if(isLeftCurlyBracket()){
-            if(isFieldList()){
+            if(isFieldList(scope)){
                 if(isRightCurlyBracket()){
                     return true;
 
@@ -952,10 +942,10 @@ class SyntacticalAnalysis {
     }
 
     //fieldlist ::= field {fieldsep field} [fieldsep]
-    private boolean isFieldList(){
-        if (isField()) {
+    private boolean isFieldList(int scope){
+        if (isField(scope)) {
             while (isFieldSep()) {
-                if (!isField()) break;
+                if (!isField(scope)) break;
             }
             return true;
         }
@@ -963,12 +953,12 @@ class SyntacticalAnalysis {
         return false;
     }
 
-    private boolean isField(){
+    private boolean isField(int scope){
         if (isLeftBracket()){
-            if (isExp() != null){
+            if (isExp(scope) != null){
                 if (isRightBracket()){
                     if (isAssign() != null){
-                        if(isExp() != null) {
+                        if(isExp(scope) != null) {
                             return true;
                         }
 
@@ -982,13 +972,13 @@ class SyntacticalAnalysis {
         } else if (isName()) {
             getNextToken();
             if (isAssign() != null) {
-                if (isExp() != null) {
+                if (isExp(scope) != null) {
                     return true;
                 }
             } else {
                 printError(503);
             }
-        } else if (isExp() != null) {
+        } else if (isExp(scope) != null) {
             return true;
         }
 

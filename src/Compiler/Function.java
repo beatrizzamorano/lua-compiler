@@ -11,14 +11,12 @@ import java.util.List;
  */
 public class Function {
     private HashMap<Integer, Parameter> parameters;
-    private HashMap<Integer, Variable> localVariables;
     private boolean hasReturnValue;
     private String name;
     private List<Statement> statements;
 
     public Function() {
         this.parameters = new HashMap<>();
-        this.localVariables = new HashMap<>();
         this.hasReturnValue = false;
         this.statements = new ArrayList<>();
     }
@@ -33,10 +31,6 @@ public class Function {
 
     public void setName(String name) {
         this.name = name;
-    }
-
-    public void addLocalVariable(Variable variable) {
-        this.localVariables.put(variable.hashCode(), variable);
     }
 
     public void addParameters(List<Parameter> params) {

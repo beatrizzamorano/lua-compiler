@@ -13,23 +13,27 @@ public class Variable implements Node {
     private TypeEnum type;
     private String name;
     private HashMap<String, Variable> properties;
+    private int scope;
 
-    public Variable(String name) {
+    public Variable(String name, int scope) {
         this.name = name;
         this.properties = new HashMap<>();
         this.type = TypeEnum.NIL;
         this.id = hashCode();
+        this.scope = scope;
     }
 
-    public Variable(Queue<String> variableConstruct) {
+    public Variable(Queue<String> variableConstruct, int scope) {
         this.name = variableConstruct.poll();
         this.properties = new HashMap<>();
         this.id = hashCode();
         this.type = TypeEnum.NIL;
+        this.scope = scope;
+
         Variable currentNode = this;
 
         while(variableConstruct.peek() != null) {
-            Variable variable = new Variable(variableConstruct.poll());
+            Variable variable = new Variable(variableConstruct.poll(), scope);
             currentNode.addProperty(variable);
             currentNode = variable;
         }
@@ -38,12 +42,6 @@ public class Variable implements Node {
 
     public Variable(TypeEnum type) {
         this.type = type;
-    }
-
-    public Variable(String name, TypeEnum type) {
-        this.name = name;
-        this.type = type;
-        this.id = this.hashCode();
     }
 
     public TypeEnum getType() {
