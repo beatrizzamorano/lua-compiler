@@ -1,8 +1,10 @@
 package Compiler;
 
+import Statements.GroupAssignStatement;
 import Statements.Statement;
 
 import java.util.*;
+import java.util.stream.Collectors;
 
 public class Program {
     private static Program instance;
@@ -37,11 +39,11 @@ public class Program {
         instance.scope.addVariable(variable);
     }
 
-    public Variable getGlobalVariable(Variable variable) {
+    public Variable geVariable(Variable variable) {
         return instance.scope.findVariable(variable);
     }
 
-    public void addFunction(Function function) throws SemanthicException {
+    public void addFunction(Function function, int scope) throws SemanthicException {
         for (Function declaredFunction : instance.functions.values()) {
             if (Objects.equals(function.getName(), declaredFunction.getName())) {
                 throw new SemanthicException(521);
@@ -60,6 +62,27 @@ public class Program {
     }
 
     public void addLocalVariable(int parentScopeId, int scopeId, Variable variable) throws SemanthicException {
-        instance.scope.addVariable(parentScopeId, scopeId, variable);
+        Scope parent = instance.scope.findScope(parentScopeId);
+        instance.scope.addVariable(parent, scopeId, variable);
+    }
+
+    public void evaluateFunction(Function function) throws SemanthicException {
+        List<String> parameterNames = function.getParametersNames();
+
+        List<List<String>> localVariableNames = function.getStatements().stream()
+                .filter(s -> s instanceof GroupAssignStatement)
+                .map(s -> (GroupAssignStatement) s)
+                .filter(groupAssignStatement -> groupAssignStatement.isLocal())
+                .map(g -> g.getVariableNames())
+                .collect(Collectors.toList());
+
+        for (List<String> variables : localVariableNames) {
+            for (String variableName : variables) {
+                boolean hasAny = parameterNames.stream().anyMatch(s -> Objects.equals(variableName, s));
+                if (hasAny) {
+                    throw new SemanthicException(533);
+                }
+            }
+        }
     }
 }

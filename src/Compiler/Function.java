@@ -5,6 +5,7 @@ import Statements.Statement;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
+import java.util.stream.Collectors;
 
 /**
  * Created by beatriz zamorano on 21/03/17.
@@ -41,5 +42,13 @@ public class Function {
 
     public void setStatements(List<Statement> statements) {
         this.statements = statements;
+    }
+
+    public List<Statement> getStatements() {
+        return this.statements;
+    }
+
+    public List<String> getParametersNames() {
+        return parameters.values().stream().map(p -> p.getName()).collect(Collectors.toList());
     }
 }

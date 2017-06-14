@@ -96,6 +96,9 @@ class SyntacticalAnalysis {
             case 528 : return "Incompatible types";
             case 529 : return "If statement expects a boolean expression";
             case 530 : return "For statement expects a boolean expression";
+            case 531 : return "Variable not declared";
+            case 532 : return "Local variable with the same name already declared on the same scope";
+            case 533 : return "Can't declare a local variable with the name of a function parameter";
 
             default : return "";
         }
@@ -229,7 +232,7 @@ class SyntacticalAnalysis {
                     if (expressions != null) {
                         if (variables.size() != expressions.size()) return null;
 
-                        return new GroupAssignStatement(variables, expressions);
+                        return new GroupAssignStatement(variables, expressions, false);
                     }
                 } else {
                     printError(503);
@@ -400,7 +403,7 @@ class SyntacticalAnalysis {
                     List<List<Node>> expressions = isExpList(scope);
                     if (expressions == null || expressions.size() != variables.size()) return null;
 
-                    return new GroupAssignStatement(variables, expressions);
+                    return new GroupAssignStatement(variables, expressions, true);
                 }
 
                 return new GenericStatement();
@@ -823,7 +826,7 @@ class SyntacticalAnalysis {
         function.setName(functionName.lexeme);
 
         try {
-            program.addFunction(function);
+            program.addFunction(function, scope);
 
         } catch (SemanthicException ex) {
             printError(ex.getErrorNumber());
@@ -845,6 +848,7 @@ class SyntacticalAnalysis {
                         function.setStatements(statements);
                         program.updateFunction(function);
                         hasReturnValue = false;
+                        program.evaluateFunction(function);
 
                         if (isEnd()) {
                             return true;

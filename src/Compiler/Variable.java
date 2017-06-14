@@ -40,6 +40,10 @@ public class Variable implements Node {
 
     }
 
+    public int getScope() {
+        return this.scope;
+    }
+
     public Variable(TypeEnum type) {
         this.type = type;
     }

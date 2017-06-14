@@ -21,7 +21,7 @@ public class Scope {
         return this.id;
     }
 
-    public void addVariable(int parentScopeId, int scopeId, Variable variable) {
+    public void addVariable(Scope parentScope, int scopeId, Variable variable) throws SemanthicException {
         Scope existingScope;
 
         if (scopeId == this.id) {
@@ -31,11 +31,14 @@ public class Scope {
         }
 
         if (existingScope != null) {
+            if (existingScope.variables.get(variable.getName()) != null) {
+                throw new SemanthicException(532);
+            }
             existingScope.addVariable(variable);
         } else {
-            Scope newScope = new Scope(scopeId, this);
+            Scope newScope = new Scope(scopeId, parentScope);
             newScope.addVariable(variable);
-            childScopes.add(newScope);
+            parentScope.childScopes.add(newScope);
         }
     }
 
@@ -65,13 +68,22 @@ public class Scope {
     }
 
     public Variable findVariable(Variable variable) {
-        Variable currentVariable = variables.get(variable.getName());
-        Variable propertyToGet = currentVariable;
-        Scope currentScope = this;
+        Scope currentScope;
+        Variable currentVariable;
+        Variable propertyToGet;
+
+        if (this.id == variable.getScope()) {
+            currentScope = this;
+        } else {
+            currentScope = findScope(variable.getScope());
+        }
+
+        currentVariable = currentScope.variables.get(variable.getName());
+        propertyToGet = currentVariable;
 
         while (propertyToGet == null && currentScope.getParentScope() != null) {
             currentScope = currentScope.getParentScope();
-            propertyToGet = currentScope.findVariable(variable);
+            propertyToGet = currentScope.variables.get(variable.getName());
         }
 
         while (!variable.getProperties().isEmpty() && !currentVariable.getProperties().isEmpty() && currentVariable.getProperties().containsKey(((Variable) variable.getProperties().values().toArray()[0]).getName())) {
@@ -103,7 +115,10 @@ public class Scope {
         return false;
     }
 
-    private Scope findScope(int scopeId) {
+    public Scope findScope(int scopeId) {
+        if (this.id == scopeId) {
+            return this;
+        }
         for (Scope childScope : childScopes) {
             if (childScope.getId() == scopeId) {
                 return childScope;

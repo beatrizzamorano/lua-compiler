@@ -13,7 +13,8 @@ public class ASTEvaluator {
 
         if (value instanceof Variable) {
             Program program = Program.getInstance();
-            Variable savedVariable = program.getGlobalVariable((Variable) value);
+            Variable savedVariable = program.geVariable((Variable) value);
+            if (savedVariable == null) throw new SemanthicException(531);
             return savedVariable.getType();
         }
         else if (value instanceof BaseOperator) {
@@ -72,7 +73,7 @@ public class ASTEvaluator {
 
                     if (variableNode instanceof Variable) {
                         Variable mockVariable = (Variable) variableNode;
-                        Variable savedVariable = program.getGlobalVariable(mockVariable);
+                        Variable savedVariable = program.geVariable(mockVariable);
                         savedVariable.setType(typeRight);
 
                         return typeRight;
